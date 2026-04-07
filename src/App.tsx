@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app"; // Добавили этот импорт
 import "./App.css";
 
-// Импорт твоих реальных логотипов
 import hhLogo from "./assets/logos/hh.svg";
 import habrLogo from "./assets/logos/habr.svg";
 import sjLogo from "./assets/logos/superjob.svg";
@@ -16,7 +16,6 @@ const FILTER_SITES = [
   { id: "all", label: "ВСЕ" }, { id: "hh", label: "HH.RU" }, { id: "habr", label: "HABR" }, { id: "superjob", label: "SUPERJOB" }, { id: "zarplata", label: "ZARPLATA" }
 ];
 
-// Функция для "хаотичного" перемешивания (Алгоритм Фишера-Йетса)
 const shuffleResults = (array: Vacancy[]) => {
   let currentIndex = array.length, randomIndex;
   const newArray = [...array];
@@ -28,7 +27,6 @@ const shuffleResults = (array: Vacancy[]) => {
   return newArray;
 };
 
-// Компонент логотипа
 const ServiceLogo = ({ link }: { link: string }) => {
   const url = link.toLowerCase();
   let src = "";
@@ -54,6 +52,9 @@ function App() {
   const [view, setView] = useState<"search" | "favorites">("search");
   const [visitedVacancies, setVisitedVacancies] = useState<string[]>([]);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+  
+  // СОСТОЯНИЕ ОБНОВЛЕНИЯ
+  const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string}>({ show: false, version: "" });
 
   useEffect(() => {
     invoke<Vacancy[]>("load_favorites").then(res => setFavorites(res));
@@ -62,6 +63,26 @@ function App() {
     document.documentElement.className = theme;
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  // ПРОВЕРКА ОБНОВЛЕНИЙ "ПО-ВЗРОСЛОМУ"
+  useEffect(() => {
+    const checkUpdates = async () => {
+      try {
+        const current = await getVersion();
+        const response = await fetch('https://api.github.com/repos/theonestory/robotnichkoff/releases/latest');
+        if (!response.ok) return;
+        const data = await response.json();
+        const latest = data.tag_name.replace('v', '');
+
+        if (latest !== current) {
+          setUpdateInfo({ show: true, version: latest });
+        }
+      } catch (e) {
+        console.error("Update check failed", e);
+      }
+    };
+    checkUpdates();
+  }, []);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -73,7 +94,6 @@ function App() {
       try {
         const res = await invoke<Vacancy[]>("search_jobs", { query: searchQuery, site: s, period: "0" });
         acc = [...acc, ...res];
-        // Перемешиваем общий список для вкладки "ВСЕ"
         setVacancies(shuffleResults(acc));
       } catch (e) {}
     }
@@ -99,7 +119,6 @@ function App() {
   return (
     <div className="flex h-screen w-screen font-sans overflow-hidden transition-colors duration-300">
       <aside className="w-64 border-r flex flex-col p-8 shrink-0 z-20 transition-all shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
-        {/* ЧИСТОЕ НАЗВАНИЕ БЕЗ ВЕРСИИ */}
         <h1 className="text-2xl font-black text-blue-600 italic tracking-tighter mb-12">Robotничкофф</h1>
         
         <nav className="space-y-4 flex-1">
@@ -120,6 +139,26 @@ function App() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden min-w-0 transition-colors" style={{ backgroundColor: 'var(--bg-app)' }}>
+        
+        {/* ПЛАШКА ОБНОВЛЕНИЯ */}
+        {updateInfo.show && (
+          <div className="bg-blue-600 text-white px-10 py-3 flex justify-between items-center shadow-lg z-30 animate-in slide-in-from-top duration-300">
+            <div className="flex items-center gap-3">
+              <span className="text-lg">🚀</span>
+              <span className="text-sm font-black tracking-tight">ДОСТУПНА НОВАЯ ВЕРСИЯ: v{updateInfo.version}</span>
+            </div>
+            <div className="flex items-center gap-6">
+              <button 
+                onClick={() => handleOpenLink("https://github.com/theonestory/robotnichkoff/releases/latest")}
+                className="bg-white text-blue-600 px-6 py-1.5 rounded-xl text-xs font-black hover:scale-105 active:scale-95 transition-all shadow-md"
+              >
+                ОБНОВИТЬ СЕЙЧАС
+              </button>
+              <button onClick={() => setUpdateInfo({ ...updateInfo, show: false })} className="opacity-50 hover:opacity-100 text-xl font-bold">✕</button>
+            </div>
+          </div>
+        )}
+
         <header className="border-b px-10 py-6 flex flex-col gap-5 z-10 transition-colors shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-4 max-w-4xl w-full">
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-bold outline-none transition-colors shadow-inner" style={{ backgroundColor: 'var(--input-bg)' }} placeholder="Поиск по всем сайтам..." />
