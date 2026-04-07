@@ -1,0 +1,47 @@
+name: "Publish Release"
+
+on:
+  push:
+    tags:
+      - 'v*' # Скрипт сработает, когда мы создадим тег версии, например v1.0.0
+
+jobs:
+  publish-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "macos-latest" # Собираем под Apple (M1/M2/Intel)
+            args: "--target universal-apple-darwin"
+          - platform: "windows-latest" # Собираем под Windows
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: install frontend dependencies
+        run: npm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__ # Версия возьмется из твоего tauri.conf.json
+          releaseName: "Robotничкофф v__VERSION__"
+          releaseBody: "Автоматическая сборка для Windows и macOS."
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
