@@ -22,7 +22,7 @@
 * **[GitHub Actions](https://github.com/features/actions):** CI/CD конвейер для автоматической сборки версий под Windows и macOS в облаке.
 * **[Gemini AI](https://gemini.google.com/):** Искусственный интеллект от Google выступил в роли архитектора, эксперта по Rust и DevOps-инженера, помогая реализовать кроссплатформенную сборку.
 
-## 📥 Скачать (Download)
+## 📥 Скачать
 Выбирайте версию для своей системы в разделе **[Releases](https://github.com/theonestory/robotnichkoff/releases/latest)**.
 
 ---
