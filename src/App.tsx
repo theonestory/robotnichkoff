@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
+import { AptabaseProvider, useAptabase } from "@aptabase/react"; // Добавили импорты
 import "./App.css";
 
 import hhLogo from "./assets/logos/hh.svg";
@@ -43,7 +44,8 @@ const ServiceLogo = ({ link }: { link: string }) => {
   );
 };
 
-function App() {
+// Выносим основную логику в отдельный компонент, чтобы использовать хуки Aptabase внутри провайдера
+function ApplicationContent() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [favorites, setFavorites] = useState<Vacancy[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,15 +58,18 @@ function App() {
   const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string}>({ show: false, version: "" });
   const [strictMode, setStrictMode] = useState(false);
 
+  const { trackEvent } = useAptabase(); // Инициализируем трекер
+
   useEffect(() => {
     invoke<Vacancy[]>("load_favorites").then(res => setFavorites(res));
     const savedVisited = localStorage.getItem("jobSonar_visited");
     if (savedVisited) setVisitedVacancies(JSON.parse(savedVisited));
     document.documentElement.className = theme;
     localStorage.setItem("theme", theme);
+    // Трекаем смену темы
+    trackEvent("theme_changed", { theme });
   }, [theme]);
 
-  // ПРОВЕРКА ОБНОВЛЕНИЙ
   useEffect(() => {
     const checkUpdates = async () => {
       try {
@@ -74,18 +79,23 @@ function App() {
         const data = await response.json();
         const latest = data.tag_name.replace('v', '');
         
-        // ВАЖНО: Убедись, что перед сборкой на прод здесь if (latest !== current)
         if (latest !== current) {
           setUpdateInfo({ show: true, version: latest });
+          trackEvent("update_available", { current, latest });
         }
       } catch (e) { console.error("Ошибка проверки обновления:", e); }
     };
     checkUpdates();
+    trackEvent("app_started"); // Трекаем запуск приложения
   }, []);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setIsLoading(true); setView("search"); setVacancies([]);
+    
+    // Трекаем начало поиска
+    trackEvent("search_started", { site_filter: filterSite, strict: strictMode });
+
     const sites = ["hh", "habr", "superjob", "zarplata"];
     let acc: Vacancy[] = [];
     
@@ -96,7 +106,6 @@ function App() {
         setVacancies(shuffleResults(acc));
       } catch (e) {}
     }
-    // Как только цикл прошел по всем 4 сайтам, выключаем лоадер
     setIsLoading(false); 
   };
 
@@ -104,6 +113,7 @@ function App() {
     if (!url.includes("linkedin") && !visitedVacancies.includes(url)) {
       const n = [...visitedVacancies, url];
       setVisitedVacancies(n); localStorage.setItem("jobSonar_visited", JSON.stringify(n));
+      trackEvent("vacancy_opened", { url: url.split('/')[2] }); // Трекаем только домен для приватности
     }
     invoke("open_browser", { url });
   };
@@ -112,6 +122,7 @@ function App() {
     const isFav = favorites.some(fav => fav.link === v.link);
     let newFavs = isFav ? favorites.filter(f => f.link !== v.link) : [...favorites, v];
     setFavorites(newFavs); invoke("save_favorites", { items: newFavs });
+    trackEvent(isFav ? "favorite_removed" : "favorite_added");
   };
 
   const currentFilterIndex = FILTER_SITES.findIndex(s => s.id === filterSite);
@@ -138,7 +149,6 @@ function App() {
         </div>
       </aside>
 
-      {/* ДОБАВЛЕН КЛАСС relative ДЛЯ РАБОТЫ ПЛАВАЮЩЕЙ ПЛАШКИ */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0 transition-colors relative" style={{ backgroundColor: 'var(--bg-app)' }}>
         
         {updateInfo.show && (
@@ -148,7 +158,10 @@ function App() {
               <span className="text-sm font-black uppercase">Доступна новая версия: v{updateInfo.version}</span>
             </div>
             <div className="flex items-center gap-6">
-              <button onClick={() => handleOpenLink("https://github.com/theonestory/robotnichkoff/releases/latest")} className="bg-white text-blue-600 px-6 py-1.5 rounded-xl text-xs font-black hover:scale-105 active:scale-95 transition-all shadow-md">ОБНОВИТЬ</button>
+              <button onClick={() => {
+                trackEvent("update_btn_clicked");
+                handleOpenLink("https://github.com/theonestory/robotnichkoff/releases/latest");
+              }} className="bg-white text-blue-600 px-6 py-1.5 rounded-xl text-xs font-black hover:scale-105 active:scale-95 transition-all shadow-md">ОБНОВИТЬ</button>
               <button onClick={() => setUpdateInfo({ ...updateInfo, show: false })} className="opacity-50 hover:opacity-100 text-xl font-bold">✕</button>
             </div>
           </div>
@@ -186,9 +199,6 @@ function App() {
           </div>
         </header>
 
-        {/* ========================================= */}
-        {/* НОВЫЙ ДИЗАЙНЕРСКИЙ ЛОАДЕР (ПЛАВАЮЩИЙ PILL) */}
-        {/* ========================================= */}
         {isLoading && (
           <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none animate-in slide-in-from-bottom-8 fade-in duration-300">
             <div className="px-6 py-3.5 rounded-full flex items-center gap-4 shadow-2xl border pointer-events-auto transition-colors" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
@@ -252,6 +262,15 @@ function App() {
         </section>
       </main>
     </div>
+  );
+}
+
+// Главная обертка с провайдером аналитики
+function App() {
+  return (
+    <AptabaseProvider appKey="A-US-3662138873">
+      <ApplicationContent />
+    </AptabaseProvider>
   );
 }
 
