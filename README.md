@@ -40,4 +40,4 @@
 ---
 
 ## 👨‍💻 Автор
-[LinkedIn](https://www.linkedin.com/in/andreevav/)
+[LinkedIn](https://www.linkedin.com/in/andreevav/) | [Telegram](https://t.me/otingir)
