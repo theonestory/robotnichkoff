@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
-import { AptabaseProvider, useAptabase } from "@aptabase/react"; // Добавили импорты
+import { AptabaseProvider, useAptabase } from "@aptabase/react";
 import "./App.css";
 
 import hhLogo from "./assets/logos/hh.svg";
@@ -44,11 +44,11 @@ const ServiceLogo = ({ link }: { link: string }) => {
   );
 };
 
-// Выносим основную логику в отдельный компонент, чтобы использовать хуки Aptabase внутри провайдера
 function ApplicationContent() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [favorites, setFavorites] = useState<Vacancy[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadMore, setIsLoadMore] = useState(false); // Для индикации загрузки "еще"
   const [searchQuery, setSearchQuery] = useState("Менеджер");
   const [filterSite, setFilterSite] = useState("all");
   const [view, setView] = useState<"search" | "favorites">("search");
@@ -57,8 +57,9 @@ function ApplicationContent() {
   
   const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string}>({ show: false, version: "" });
   const [strictMode, setStrictMode] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0); // Стейт страницы
 
-  const { trackEvent } = useAptabase(); // Инициализируем трекер
+  const { trackEvent } = useAptabase();
 
   useEffect(() => {
     invoke<Vacancy[]>("load_favorites").then(res => setFavorites(res));
@@ -66,7 +67,6 @@ function ApplicationContent() {
     if (savedVisited) setVisitedVacancies(JSON.parse(savedVisited));
     document.documentElement.className = theme;
     localStorage.setItem("theme", theme);
-    // Трекаем смену темы
     trackEvent("theme_changed", { theme });
   }, [theme]);
 
@@ -86,34 +86,51 @@ function ApplicationContent() {
       } catch (e) { console.error("Ошибка проверки обновления:", e); }
     };
     checkUpdates();
-    trackEvent("app_started"); // Трекаем запуск приложения
+    trackEvent("app_started");
   }, []);
 
-  const handleSearch = async () => {
+  const handleSearch = async (isNextPage = false) => {
     if (!searchQuery.trim()) return;
-    setIsLoading(true); setView("search"); setVacancies([]);
     
-    // Трекаем начало поиска
-    trackEvent("search_started", { site_filter: filterSite, strict: strictMode });
+    const targetPage = isNextPage ? currentPage + 1 : 0;
+    
+    if (isNextPage) setIsLoadMore(true);
+    else {
+        setIsLoading(true);
+        setVacancies([]);
+        setCurrentPage(0);
+    }
+
+    setView("search");
+    trackEvent(isNextPage ? "load_more_started" : "search_started", { site_filter: filterSite, page: targetPage });
 
     const sites = ["hh", "habr", "superjob", "zarplata"];
-    let acc: Vacancy[] = [];
+    let acc: Vacancy[] = isNextPage ? [...vacancies] : [];
     
     for (const s of sites) {
       try {
-        const res = await invoke<Vacancy[]>("search_jobs", { query: searchQuery, site: s, period: "0" });
+        // Передаем targetPage в Rust
+        const res = await invoke<Vacancy[]>("search_jobs", { query: searchQuery, site: s, page: targetPage });
         acc = [...acc, ...res];
+        // Если это дозагрузка, мы перемешиваем только новые или оставляем как есть? 
+        // Лучше перемешать всё для честности выдачи
         setVacancies(shuffleResults(acc));
-      } catch (e) {}
+      } catch (e) { console.error(e); }
     }
-    setIsLoading(false); 
+    
+    if (isNextPage) {
+        setCurrentPage(targetPage);
+        setIsLoadMore(false);
+    } else {
+        setIsLoading(false);
+    }
   };
 
   const handleOpenLink = (url: string) => {
     if (!url.includes("linkedin") && !visitedVacancies.includes(url)) {
       const n = [...visitedVacancies, url];
       setVisitedVacancies(n); localStorage.setItem("jobSonar_visited", JSON.stringify(n));
-      trackEvent("vacancy_opened", { url: url.split('/')[2] }); // Трекаем только домен для приватности
+      trackEvent("vacancy_opened", { url: url.split('/')[2] });
     }
     invoke("open_browser", { url });
   };
@@ -170,8 +187,8 @@ function ApplicationContent() {
         <header className="border-b px-10 py-6 flex flex-col gap-5 z-10 transition-colors shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
           <div className="flex flex-col gap-3 max-w-4xl w-full">
             <div className="flex items-center gap-4 w-full">
-                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-bold outline-none transition-colors shadow-inner" style={{ backgroundColor: 'var(--input-bg)' }} placeholder="Поиск по всем сайтам..." />
-                <button onClick={handleSearch} disabled={isLoading} className="bg-blue-600 text-white px-10 py-3.5 rounded-2xl text-sm font-black active:scale-95 transition-all shadow-md">{isLoading ? "..." : "НАЙТИ"}</button>
+                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch(false)} className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-bold outline-none transition-colors shadow-inner" style={{ backgroundColor: 'var(--input-bg)' }} placeholder="Поиск по всем сайтам..." />
+                <button onClick={() => handleSearch(false)} disabled={isLoading} className="bg-blue-600 text-white px-10 py-3.5 rounded-2xl text-sm font-black active:scale-95 transition-all shadow-md">{isLoading ? "..." : "НАЙТИ"}</button>
             </div>
             
             <label className="flex items-center gap-3 px-2 cursor-pointer group w-fit mt-1">
@@ -199,7 +216,7 @@ function ApplicationContent() {
           </div>
         </header>
 
-        {isLoading && (
+        {(isLoading || isLoadMore) && (
           <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none animate-in slide-in-from-bottom-8 fade-in duration-300">
             <div className="px-6 py-3.5 rounded-full flex items-center gap-4 shadow-2xl border pointer-events-auto transition-colors" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
               <div className="relative flex h-3.5 w-3.5 shrink-0">
@@ -207,7 +224,7 @@ function ApplicationContent() {
                 <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-600"></span>
               </div>
               <span className="text-xs font-black tracking-widest uppercase opacity-80" style={{ color: 'var(--text-main)' }}>
-                Опрашиваем площадки...
+                {isLoadMore ? "Подгружаем еще..." : "Опрашиваем площадки..."}
               </span>
             </div>
           </div>
@@ -258,6 +275,19 @@ function ApplicationContent() {
                 </div>
               );
             })}
+
+            {/* КНОПКА ЗАГРУЗИТЬ ЕЩЕ */}
+            {view === "search" && vacancies.length > 0 && !isLoading && (
+                <div className="flex justify-center mt-4">
+                    <button 
+                        onClick={() => handleSearch(true)} 
+                        disabled={isLoadMore}
+                        className="text-blue-600 text-xs font-black uppercase tracking-widest hover:opacity-70 transition-all py-4 px-10"
+                    >
+                        {isLoadMore ? "ЗАГРУЗКА..." : "ЗАГРУЗИТЬ ЕЩЕ ВАКАНСИЙ"}
+                    </button>
+                </div>
+            )}
           </div>
         </section>
       </main>
@@ -265,7 +295,6 @@ function ApplicationContent() {
   );
 }
 
-// Главная обертка с провайдером аналитики
 function App() {
   return (
     <AptabaseProvider appKey="A-US-3662138873">

@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::process::Command;
 
-// Импортируем расширение для Windows, чтобы убрать окно консоли
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
@@ -20,9 +19,8 @@ pub struct Vacancy {
 fn open_browser(url: String) {
     #[cfg(target_os = "windows")]
     {
-        // Флаг CREATE_NO_WINDOW (0x08000000) предотвращает появление черного окна cmd
         let _ = Command::new("cmd")
-            .args(&["/C", "start", "", &url]) // Добавлен пустой заголовок "", это стандарт для команды start
+            .args(&["/C", "start", "", &url])
             .creation_flags(0x08000000)
             .spawn();
     }
@@ -37,14 +35,15 @@ fn open_browser(url: String) {
 }
 
 #[tauri::command]
-async fn search_jobs(query: String, site: String, _period: String) -> Result<Vec<Vacancy>, String> {
+async fn search_jobs(query: String, site: String, page: u32) -> Result<Vec<Vacancy>, String> {
     let client = reqwest::Client::new();
     let mut results = Vec::new();
     let ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
     if site == "hh" || site == "zarplata" {
         let base_url = if site == "hh" { "https://hh.ru" } else { "https://www.zarplata.ru" };
-        let url = format!("{}/search/vacancy?text={}&area=113", base_url, query);
+        // Добавлен параметр &page
+        let url = format!("{}/search/vacancy?text={}&area=113&page={}", base_url, query, page);
         
         let response = client.get(&url).header(USER_AGENT, ua).header(ACCEPT_LANGUAGE, "ru-RU,ru;q=0.9").send().await.map_err(|e| e.to_string())?;
         let html_content = response.text().await.map_err(|e| e.to_string())?;
@@ -90,7 +89,8 @@ async fn search_jobs(query: String, site: String, _period: String) -> Result<Vec
         }
     } 
     else if site == "habr" {
-        let url = format!("https://career.habr.com/vacancies?q={}&type=all", query);
+        // У Хабра пагинация начинается с 1
+        let url = format!("https://career.habr.com/vacancies?q={}&type=all&page={}", query, page + 1);
         let response = client.get(&url).header(USER_AGENT, ua).send().await.map_err(|e| e.to_string())?;
         let document = Html::parse_document(&response.text().await.map_err(|e| e.to_string())?);
         for element in document.select(&Selector::parse(".vacancy-card").unwrap()) {
@@ -107,7 +107,8 @@ async fn search_jobs(query: String, site: String, _period: String) -> Result<Vec
         }
     }
     else if site == "superjob" {
-        let url = format!("https://www.superjob.ru/vacancy/search/?keywords={}", query);
+        // У SuperJob пагинация начинается с 1
+        let url = format!("https://www.superjob.ru/vacancy/search/?keywords={}&page={}", query, page + 1);
         let response = client.get(&url).header(USER_AGENT, ua).send().await.map_err(|e| e.to_string())?;
         let document = Html::parse_document(&response.text().await.map_err(|e| e.to_string())?);
         for element in document.select(&Selector::parse("div[class*='f-test-vacancy-item']").unwrap()) {
