@@ -4,6 +4,10 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::process::Command;
 
+// Импортируем расширение для Windows, чтобы убрать окно консоли
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Vacancy {
     pub title: String,
@@ -16,7 +20,11 @@ pub struct Vacancy {
 fn open_browser(url: String) {
     #[cfg(target_os = "windows")]
     {
-        let _ = Command::new("cmd").args(&["/C", "start", &url]).spawn();
+        // Флаг CREATE_NO_WINDOW (0x08000000) предотвращает появление черного окна cmd
+        let _ = Command::new("cmd")
+            .args(&["/C", "start", "", &url]) // Добавлен пустой заголовок "", это стандарт для команды start
+            .creation_flags(0x08000000)
+            .spawn();
     }
     #[cfg(target_os = "macos")]
     {
