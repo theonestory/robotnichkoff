@@ -12,7 +12,6 @@ pub struct Vacancy {
     pub salary: String,
 }
 
-// ГАРАНТИРОВАННОЕ ОТКРЫТИЕ ССЫЛОК
 #[tauri::command]
 fn open_browser(url: String) {
     #[cfg(target_os = "windows")]
@@ -46,44 +45,38 @@ async fn search_jobs(query: String, site: String, _period: String) -> Result<Vec
         let vacancy_selector = Selector::parse("[data-qa='serp-item'], [data-qa='vacancy-serp__vacancy']").unwrap();
         let title_selector = Selector::parse("[data-qa*='title'], [data-qa='serp-item__title']").unwrap();
         let company_selector = Selector::parse("[data-qa='vacancy-serp__vacancy-employer'], [data-qa='vacancy-employer'], [data-qa='serp-item__meta-info-company'], .vacancy-serp-item__meta-info").unwrap();
-        let salary_specific_selector = Selector::parse("[data-qa='serp-item__compensation'], [data-qa='vacancy-serp__vacancy-compensation']").unwrap();
-        let fallback_text_selector = Selector::parse("span, div").unwrap();
+        let salary_selector = Selector::parse("[data-qa='serp-item__compensation'], [data-qa='vacancy-serp__vacancy-compensation']").unwrap();
+        let fallback_selector = Selector::parse("span, div").unwrap();
 
         for element in document.select(&vacancy_selector) {
             if let Some(t_el) = element.select(&title_selector).next() {
                 let company = element.select(&company_selector)
                     .next()
                     .map(|c| c.text().collect::<Vec<_>>().join(" "))
-                    .unwrap_or_else(|| "".to_string())
-                    .replace("\u{a0}", " ")
-                    .trim()
-                    .to_string();
+                    .unwrap_or_default()
+                    .replace("\u{a0}", " ").trim().to_string();
 
-                let mut salary = element.select(&salary_specific_selector)
+                let mut salary = element.select(&salary_selector)
                     .next()
                     .map(|s| s.text().collect::<Vec<_>>().join(" "))
                     .unwrap_or_else(|| {
-                        element.select(&fallback_text_selector)
+                        element.select(&fallback_selector)
                             .map(|s| s.text().collect::<Vec<_>>().join(" "))
                             .find(|txt| {
                                 let t = txt.to_lowercase();
                                 (t.contains('₽') || t.contains("руб")) && (t.contains("от") || t.contains("до")) && txt.len() < 60
                             })
                             .unwrap_or_else(|| "З/П не указана".to_string())
-                    })
-                    .replace("\u{a0}", " ");
+                    }).replace("\u{a0}", " ");
 
                 if let Some(idx) = salary.find("Опыт") { salary = salary[..idx].to_string(); }
-                if let Some(idx) = salary.find("Сейчас") { salary = salary[..idx].to_string(); }
-
+                
                 let mut link = t_el.value().attr("href").unwrap_or("").to_string();
                 if !link.starts_with("http") && !link.is_empty() { link = format!("{}{}", base_url, link); }
 
                 results.push(Vacancy {
                     title: t_el.text().collect::<Vec<_>>().join(" ").replace("\u{a0}", " ").trim().to_string(),
-                    link,
-                    company,
-                    salary: salary.trim().to_string(),
+                    link, company, salary: salary.trim().to_string(),
                 });
             }
         }
@@ -92,19 +85,15 @@ async fn search_jobs(query: String, site: String, _period: String) -> Result<Vec
         let url = format!("https://career.habr.com/vacancies?q={}&type=all", query);
         let response = client.get(&url).header(USER_AGENT, ua).send().await.map_err(|e| e.to_string())?;
         let document = Html::parse_document(&response.text().await.map_err(|e| e.to_string())?);
-        let vacancy_selector = Selector::parse(".vacancy-card").unwrap();
-        for element in document.select(&vacancy_selector) {
+        for element in document.select(&Selector::parse(".vacancy-card").unwrap()) {
             if let Some(t_el) = element.select(&Selector::parse(".vacancy-card__title-link").unwrap()).next() {
-                let salary = element.select(&Selector::parse(".vacancy-card__salary").unwrap()).next().map(|s| s.text().collect::<Vec<_>>().join(" ")).unwrap_or_else(|| "З/П не указана".to_string());
-                
                 let raw_link = t_el.value().attr("href").unwrap_or("");
                 let link = if raw_link.starts_with("http") { raw_link.to_string() } else { format!("https://career.habr.com{}", raw_link) };
-
                 results.push(Vacancy {
                     title: t_el.text().collect::<Vec<_>>().join(" ").trim().to_string(),
                     link,
                     company: element.select(&Selector::parse(".vacancy-card__company-title").unwrap()).next().map(|c| c.text().collect::<Vec<_>>().join(" ")).unwrap_or_default().trim().to_string(),
-                    salary,
+                    salary: element.select(&Selector::parse(".vacancy-card__salary").unwrap()).next().map(|s| s.text().collect::<Vec<_>>().join(" ")).unwrap_or_else(|| "З/П не указана".to_string()),
                 });
             }
         }
@@ -113,19 +102,15 @@ async fn search_jobs(query: String, site: String, _period: String) -> Result<Vec
         let url = format!("https://www.superjob.ru/vacancy/search/?keywords={}", query);
         let response = client.get(&url).header(USER_AGENT, ua).send().await.map_err(|e| e.to_string())?;
         let document = Html::parse_document(&response.text().await.map_err(|e| e.to_string())?);
-        let vacancy_selector = Selector::parse("div[class*='f-test-vacancy-item']").unwrap();
-        for element in document.select(&vacancy_selector) {
+        for element in document.select(&Selector::parse("div[class*='f-test-vacancy-item']").unwrap()) {
             if let Some(t_el) = element.select(&Selector::parse("a[class*='f-test-link'][href*='/vakansii/']").unwrap()).next() {
-                let salary = element.select(&Selector::parse("span[class*='f-test-text-company-item-salary']").unwrap()).next().map(|s| s.text().collect::<Vec<_>>().join(" ")).unwrap_or_else(|| "По договоренности".to_string());
-                
                 let raw_link = t_el.value().attr("href").unwrap_or("");
                 let link = if raw_link.starts_with("http") { raw_link.to_string() } else { format!("https://www.superjob.ru{}", raw_link) };
-
                 results.push(Vacancy { 
                     title: t_el.text().collect::<Vec<_>>().join(" ").trim().to_string(), 
                     link, 
                     company: element.select(&Selector::parse("span[class*='f-test-text-vacancy-item-company']").unwrap()).next().map(|c| c.text().collect::<Vec<_>>().join(" ")).unwrap_or_else(|| "Компания".to_string()).trim().to_string(),
-                    salary,
+                    salary: element.select(&Selector::parse("span[class*='f-test-text-company-item-salary']").unwrap()).next().map(|s| s.text().collect::<Vec<_>>().join(" ")).unwrap_or_else(|| "По договоренности".to_string()),
                 });
             }
         }

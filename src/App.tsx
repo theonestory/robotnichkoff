@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { getVersion } from "@tauri-apps/api/app"; // Добавили этот импорт
+import { getVersion } from "@tauri-apps/api/app";
 import "./App.css";
 
 import hhLogo from "./assets/logos/hh.svg";
@@ -53,8 +53,8 @@ function App() {
   const [visitedVacancies, setVisitedVacancies] = useState<string[]>([]);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
   
-  // СОСТОЯНИЕ ОБНОВЛЕНИЯ
   const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string}>({ show: false, version: "" });
+  const [strictMode, setStrictMode] = useState(false);
 
   useEffect(() => {
     invoke<Vacancy[]>("load_favorites").then(res => setFavorites(res));
@@ -64,7 +64,7 @@ function App() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // ПРОВЕРКА ОБНОВЛЕНИЙ "ПО-ВЗРОСЛОМУ"
+  // ПРОВЕРКА ОБНОВЛЕНИЙ
   useEffect(() => {
     const checkUpdates = async () => {
       try {
@@ -73,13 +73,12 @@ function App() {
         if (!response.ok) return;
         const data = await response.json();
         const latest = data.tag_name.replace('v', '');
-
+        
+        // ВАЖНО: Убедись, что перед сборкой на прод здесь if (latest !== current)
         if (latest !== current) {
           setUpdateInfo({ show: true, version: latest });
         }
-      } catch (e) {
-        console.error("Update check failed", e);
-      }
+      } catch (e) { console.error("Ошибка проверки обновления:", e); }
     };
     checkUpdates();
   }, []);
@@ -97,7 +96,8 @@ function App() {
         setVacancies(shuffleResults(acc));
       } catch (e) {}
     }
-    setIsLoading(false);
+    // Как только цикл прошел по всем 4 сайтам, выключаем лоадер
+    setIsLoading(false); 
   };
 
   const handleOpenLink = (url: string) => {
@@ -138,31 +138,47 @@ function App() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col overflow-hidden min-w-0 transition-colors" style={{ backgroundColor: 'var(--bg-app)' }}>
+      {/* ДОБАВЛЕН КЛАСС relative ДЛЯ РАБОТЫ ПЛАВАЮЩЕЙ ПЛАШКИ */}
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0 transition-colors relative" style={{ backgroundColor: 'var(--bg-app)' }}>
         
-        {/* ПЛАШКА ОБНОВЛЕНИЯ */}
         {updateInfo.show && (
           <div className="bg-blue-600 text-white px-10 py-3 flex justify-between items-center shadow-lg z-30 animate-in slide-in-from-top duration-300">
             <div className="flex items-center gap-3">
               <span className="text-lg">🚀</span>
-              <span className="text-sm font-black tracking-tight">ДОСТУПНА НОВАЯ ВЕРСИЯ: v{updateInfo.version}</span>
+              <span className="text-sm font-black uppercase">Доступна новая версия: v{updateInfo.version}</span>
             </div>
             <div className="flex items-center gap-6">
-              <button 
-                onClick={() => handleOpenLink("https://github.com/theonestory/robotnichkoff/releases/latest")}
-                className="bg-white text-blue-600 px-6 py-1.5 rounded-xl text-xs font-black hover:scale-105 active:scale-95 transition-all shadow-md"
-              >
-                ОБНОВИТЬ СЕЙЧАС
-              </button>
+              <button onClick={() => handleOpenLink("https://github.com/theonestory/robotnichkoff/releases/latest")} className="bg-white text-blue-600 px-6 py-1.5 rounded-xl text-xs font-black hover:scale-105 active:scale-95 transition-all shadow-md">ОБНОВИТЬ</button>
               <button onClick={() => setUpdateInfo({ ...updateInfo, show: false })} className="opacity-50 hover:opacity-100 text-xl font-bold">✕</button>
             </div>
           </div>
         )}
 
         <header className="border-b px-10 py-6 flex flex-col gap-5 z-10 transition-colors shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
-          <div className="flex items-center gap-4 max-w-4xl w-full">
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-bold outline-none transition-colors shadow-inner" style={{ backgroundColor: 'var(--input-bg)' }} placeholder="Поиск по всем сайтам..." />
-            <button onClick={handleSearch} disabled={isLoading} className="bg-blue-600 text-white px-10 py-3.5 rounded-2xl text-sm font-black active:scale-95 transition-all shadow-md">{isLoading ? "..." : "НАЙТИ"}</button>
+          <div className="flex flex-col gap-3 max-w-4xl w-full">
+            <div className="flex items-center gap-4 w-full">
+                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-bold outline-none transition-colors shadow-inner" style={{ backgroundColor: 'var(--input-bg)' }} placeholder="Поиск по всем сайтам..." />
+                <button onClick={handleSearch} disabled={isLoading} className="bg-blue-600 text-white px-10 py-3.5 rounded-2xl text-sm font-black active:scale-95 transition-all shadow-md">{isLoading ? "..." : "НАЙТИ"}</button>
+            </div>
+            
+            <label className="flex items-center gap-3 px-2 cursor-pointer group w-fit mt-1">
+              <div className="relative flex items-center justify-center">
+                <input 
+                  type="checkbox" 
+                  checked={strictMode} 
+                  onChange={(e) => setStrictMode(e.target.checked)} 
+                  className="sr-only peer" 
+                />
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200 ease-out ${strictMode ? 'bg-blue-600 border-blue-600' : 'bg-transparent'}`} style={{ borderColor: strictMode ? '' : 'var(--border)' }}>
+                  <svg className={`w-3.5 h-3.5 text-white transform transition-all duration-200 ${strictMode ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+              <span className="text-xs font-bold tracking-wide transition-opacity duration-200 uppercase" style={{ color: 'var(--text-main)', opacity: strictMode ? 1 : 0.4 }}>
+                Строгий поиск <span className="font-normal opacity-70 normal-case tracking-normal ml-1">(точное совпадение)</span>
+              </span>
+            </label>
           </div>
           <div className="ios-slider-container max-w-4xl">
             <div className="ios-slider-pill" style={{ left: `calc(${currentFilterIndex} * 20% + 4px)`, width: 'calc(20% - 8px)' }} />
@@ -170,12 +186,37 @@ function App() {
           </div>
         </header>
 
-        <section className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          <div className="flex flex-col gap-5 max-w-5xl mx-auto">
+        {/* ========================================= */}
+        {/* НОВЫЙ ДИЗАЙНЕРСКИЙ ЛОАДЕР (ПЛАВАЮЩИЙ PILL) */}
+        {/* ========================================= */}
+        {isLoading && (
+          <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none animate-in slide-in-from-bottom-8 fade-in duration-300">
+            <div className="px-6 py-3.5 rounded-full flex items-center gap-4 shadow-2xl border pointer-events-auto transition-colors" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
+              <div className="relative flex h-3.5 w-3.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-600"></span>
+              </div>
+              <span className="text-xs font-black tracking-widest uppercase opacity-80" style={{ color: 'var(--text-main)' }}>
+                Опрашиваем площадки...
+              </span>
+            </div>
+          </div>
+        )}
+
+        <section className="flex-1 overflow-y-auto p-8 custom-scrollbar relative">
+          <div className="flex flex-col gap-5 max-w-5xl mx-auto pb-10">
             {(view === "search" ? vacancies : favorites).filter(v => {
-               if (filterSite === "all") return true;
-               const l = v.link.toLowerCase();
-               return l.includes(filterSite === "habr" ? "habr.com" : filterSite);
+               if (filterSite !== "all") {
+                 const domains: Record<string, string> = { hh: "hh.ru", habr: "habr.com", superjob: "superjob.ru", zarplata: "zarplata.ru" };
+                 if (!v.link.toLowerCase().includes(domains[filterSite])) return false;
+               }
+               
+               if (strictMode && view === "search") {
+                 const title = v.title.toLowerCase();
+                 const queryWords = searchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+                 if (!queryWords.every(word => title.includes(word))) return false;
+               }
+               return true;
             }).map((v) => {
               const isFav = favorites.some(f => f.link === v.link);
               const isVisited = visitedVacancies.includes(v.link);
