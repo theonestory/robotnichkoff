@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Цветовые переменные */
+:root {
+  --bg-app: #F8FAFC;
+  --bg-side: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --text-main: #0F172A;
+  --text-dim: #64748B;
+  --border: #E2E8F0;
+  --input-bg: #F1F5F9;
+  --btn-bg: #F1F5F9;
+  --btn-icon: #B7CBE4;
+  --toggle-bg: #F1F5F9;
+  --pill-bg: #FFFFFF;
+}
+
+.dark {
+  --bg-app: #0F0F10;
+  --bg-side: #161618;
+  --bg-card: #1C1C1E;
+  --text-main: #ECECED;
+  --text-dim: #727276;
+  --border: #2C2C2E;
+  --input-bg: #252529;
+  --btn-bg: #2C2C2E;
+  --btn-icon: #545458;
+  --toggle-bg: #252529;
+  --pill-bg: #3F3F46;
+}
+
+html, body, #root {
+  height: 100%; margin: 0; padding: 0; overflow: hidden;
+  background-color: var(--bg-app); color: var(--text-main);
+  transition: background-color 0.3s ease;
+}
+
+/* СЛАЙДЕР РЕСУРСОВ */
+.ios-slider-container {
+  @apply relative flex p-1 rounded-xl overflow-hidden w-full h-10 items-center shrink-0;
+  background-color: var(--input-bg);
+}
+.ios-slider-pill {
+  @apply absolute top-1 bottom-1 rounded-lg shadow-sm z-0;
+  background-color: var(--pill-bg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ios-slider-item {
+  @apply relative z-10 flex-1 text-center py-2 text-[10px] font-black uppercase tracking-wider cursor-pointer transition-colors duration-300;
+  min-width: 0;
+}
+
+/* ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ */
+.theme-toggle-container { @apply mt-auto pt-6 border-t; border-color: var(--border); }
+.theme-toggle-switch { @apply relative flex items-center w-full h-11 rounded-2xl p-1 cursor-pointer transition-all; background-color: var(--toggle-bg); }
+.theme-toggle-pill { @apply absolute w-[calc(50%-4px)] h-9 rounded-xl shadow-md transition-all duration-300 ease-out; background-color: var(--pill-bg); }
+.theme-toggle-switch[data-theme='light'] .theme-toggle-pill { left: 4px; }
+.theme-toggle-switch[data-theme='dark'] .theme-toggle-pill { left: calc(50% + 0px); }
+.theme-label { @apply relative z-10 flex-1 flex items-center justify-center text-[10px] font-black uppercase tracking-widest transition-colors; color: var(--text-dim); }
+.theme-label.active { color: var(--text-main); }
+.author-credit { @apply mt-4 text-[9px] uppercase tracking-[0.15em] text-center opacity-40 hover:opacity-100 transition-all cursor-pointer font-bold; color: var(--text-dim); }
+
+/* КАРТОЧКА */
+.vacancy-card {
+  background-color: var(--bg-card);
+  @apply p-6 rounded-[2rem] flex items-center justify-between border border-transparent transition-all;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+}
+.vacancy-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05); }
+
+/* ЛОГОТИП СЕРВИСА (ПОЛНАЯ ЗАМЕНА) */
+.service-logo-container {
+  width: 52px; height: 52px;
+  @apply rounded-full shrink-0 mr-6 overflow-hidden transition-all duration-300 flex items-center justify-center;
+}
+
+.service-logo-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+
+.service-logo-fallback {
+  width: 100%; height: 100%; @apply bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400;
+}
+.service-logo-fallback svg { width: 24px; height: 24px; }
+
+/* ЗАТУХАНИЕ VISITED */
+.visited-card .service-logo-container, 
+.visited-card .text-stack { opacity: 0.2 !important; filter: grayscale(1); }
+
+/* КНОПКИ */
+.round-btn {
+  width: 48px; height: 48px; @apply rounded-full flex items-center justify-center transition-all;
+  background-color: var(--btn-bg); color: var(--btn-icon);
+}
+.round-btn:hover { transform: scale(1.1); filter: brightness(1.1); }
+.icon-fav-active { color: #D07373 !important; fill: #D07373 !important; }
+
+.text-stack { @apply flex flex-col flex-1 min-w-0; }
+.vacancy-title { font-size: 18px; font-weight: 600; @apply leading-tight mb-1 truncate; color: var(--text-main); }
+.company-name { font-size: 13px; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
