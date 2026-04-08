@@ -37,6 +37,10 @@
    ```bash
    sudo xattr -rd com.apple.quarantine /Applications/Robotnichkoff.app
 
+ФОТО
+![photo_2026-04-08_15-20-19](https://github.com/user-attachments/assets/8b930e54-8e20-4244-b0a5-9db7effa0ece)
+
+
 ---
 
 ## 👨‍💻 Автор
