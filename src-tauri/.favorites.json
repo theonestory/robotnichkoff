@@ -6,15 +6,15 @@
     "salary": "З/П не указана"
   },
   {
-    "title": "Менеджер",
-    "link": "https://hh.ru/vacancy/131756630?query=%D0%9C%D0%B5%D0%BD%D0%B5%D0%B4%D0%B6%D0%B5%D1%80&hhtmFrom=vacancy_search_list",
-    "company": "ПАО  Ростелеком",
-    "salary": "З/П не указана"
-  },
-  {
     "title": "Менеджер  по сопровождению",
     "link": "https://www.superjob.ru/vakansii/menedzher-po-soprovozhdeniyu-51797954.html",
     "company": "Образовательный холдинг СИНЕРГИЯ Проверенный работодатель 6.6",
     "salary": "По договоренности"
+  },
+  {
+    "title": "Менеджер  по продажам",
+    "link": "https://www.superjob.ru/vakansii/menedzher-po-prodazham-48058041.html",
+    "company": "КРОКУС",
+    "salary": "ЗП: не указана"
   }
 ]
