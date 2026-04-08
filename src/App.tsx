@@ -30,6 +30,111 @@ const shuffleResults = (array: Vacancy[]) => {
   return newArray;
 };
 
+const getBaseLink = (url: string) => {
+  if (!url) return "";
+  return url.split('?')[0].toLowerCase();
+};
+
+// УМНЫЙ ФИЛЬТР: Строгое разделение ролей и C-level
+const isJobMatch = (title: string, query: string) => {
+  if (!query) return true;
+  const t = title.toLowerCase();
+  const q = query.toLowerCase().trim();
+
+  const dict: Record<string, string[]> = {
+    // --- C-LEVEL ---
+    "ceo": ["генеральный директор", "гендиректор", "chief executive officer"],
+    "генеральный директор": ["ceo", "chief executive officer", "гендиректор"],
+    
+    "cmo": ["директор по маркетингу", "маркетинг директор", "chief marketing officer"],
+    "директор по маркетингу": ["cmo", "chief marketing officer", "маркетинг директор"],
+    
+    "cfo": ["финансовый директор", "директор по финансам", "chief financial officer"],
+    "финансовый директор": ["cfo", "chief financial officer", "директор по финансам"],
+    
+    "coo": ["операционный директор", "chief operating officer"],
+    "операционный директор": ["coo", "chief operating officer"],
+    
+    "cpo": ["chief product officer", "директор по продукту"],
+    "директор по продукту": ["cpo", "chief product officer"],
+    
+    "cto": ["технический директор", "chief technology officer"],
+    "технический директор": ["cto", "chief technology officer"],
+
+    // --- PRODUCT & PROJECT ---
+    "владелец продукта": ["product owner", "po"],
+    "product owner": ["владелец продукта", "po"],
+    "po": ["product owner", "владелец продукта"],
+    
+    "product manager": ["менеджер продукта", "продакт", "продакт-менеджер"],
+    "менеджер продукта": ["product manager", "продакт", "продакт-менеджер"],
+    "продакт": ["product manager", "менеджер продукта", "продакт-менеджер"],
+    
+    "project manager": ["руководитель проекта", "менеджер проекта", "проджект", "pm"],
+    "руководитель проекта": ["project manager", "менеджер проекта", "проджект", "pm"],
+    "менеджер проекта": ["project manager", "руководитель проекта", "проджект", "pm"],
+    "проджект": ["project manager", "менеджер проекта", "руководитель проекта", "pm"],
+    "pm": ["project manager", "менеджер проекта", "руководитель проекта", "проджект"],
+
+    // --- TECH & ENGINEERING ---
+    "tech lead": ["техлид", "технический лидер"],
+    "техлид": ["tech lead", "технический лидер"],
+    
+    "frontend": ["фронтенд", "фронт", "react", "vue", "angular", "front-end"],
+    "фронтенд": ["frontend", "front-end", "react", "vue", "angular", "фронт"],
+    
+    "backend": ["бэкенд", "бэк", "back-end", "python", "java", "golang", "php", "node", "c#"],
+    "бэкенд": ["backend", "back-end", "python", "java", "golang", "php", "node", "c#", "бэк"],
+    
+    "qa": ["тестировщик", "tester", "тестирование", "test", "qaa", "qa engineer"],
+    "тестировщик": ["qa", "tester", "тестирование", "test", "qa engineer"],
+    
+    "devops": ["девопс", "sre"],
+    "девопс": ["devops", "sre"],
+    
+    "android": ["андроид", "mobile", "мобильный"],
+    "ios": ["айос", "mobile", "мобильный", "swift", "apple"],
+    "fullstack": ["фуллстек", "full-stack", "фулстек"],
+
+    // --- DESIGN ---
+    "дизайнер": ["designer", "ui/ux", "ui", "ux", "product designer", "продуктовый дизайнер"],
+    "designer": ["дизайнер", "ui/ux", "ui", "ux", "product designer", "продуктовый дизайнер"],
+
+    // --- DATA & ANALYTICS ---
+    "аналитик": ["analyst", "data", "bi", "dwh", "system analyst", "системный аналитик"],
+    "analyst": ["аналитик", "data", "bi", "dwh", "system analyst"],
+
+    // --- HR ---
+    "hr": ["рекрутер", "персонал", "recruiter", "talent", "hrbp"],
+    "рекрутер": ["hr", "персонал", "recruiter", "talent"]
+  };
+
+  let matchedAliases: string[] = [q];
+  for (const [key, values] of Object.entries(dict)) {
+    if (q.includes(key) || key.includes(q)) {
+      matchedAliases.push(...values);
+    }
+  }
+
+  // 1. Проверяем алиасы
+  const exactAliasMatch = matchedAliases.some(alias => {
+    if (alias.length <= 3) {
+      const escapedAlias = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(^|[^a-zа-яё0-9_])` + escapedAlias + `([^a-zа-яё0-9_]|$)`, 'i');
+      return regex.test(t);
+    }
+    return t.includes(alias);
+  });
+  
+  if (exactAliasMatch) return true;
+
+  // 2. Фолбэк: Строгая текстовая проверка
+  const queryWords = q.split(/\s+/).filter(w => w.length > 1);
+  if (queryWords.length > 0 && queryWords.every(w => t.includes(w))) return true;
+
+  return false; 
+};
+
 const ServiceLogo = ({ link }: { link: string }) => {
   const url = (link || "").toLowerCase();
   let src = "";
@@ -143,12 +248,13 @@ function ApplicationContent() {
     if (matching.length > 0) {
        setPendingVacancies(prev => prev.filter(v => !v.link.toLowerCase().includes(reqDomain)));
        setAllVacancies(prev => {
-          const uniqueMatching = matching.filter(m => !prev.some(a => a.link === m.link));
+          const uniqueMatching = matching.filter(m => !prev.some(a => getBaseLink(a.link) === getBaseLink(m.link)));
           return [...uniqueMatching, ...prev];
        });
     }
   }, [filterSite, pendingVacancies, view]);
 
+  // ФОНОВЫЙ РАДАР
   useEffect(() => {
     if (!activeSearch || view !== "search") return;
 
@@ -161,12 +267,13 @@ function ApplicationContent() {
         try {
           const res = await invoke<Vacancy[]>("search_jobs", { query: activeSearch, site: s, page: 0 });
           if (Array.isArray(res) && res.length > 0) {
+            const validRes = res.filter(v => isJobMatch(v.title, activeSearch));
             const currentList = allVacanciesRef.current;
             const currentPending = pendingVacanciesRef.current;
             
-            const fresh = res.filter(newVac => 
-              !currentList.some(oldVac => oldVac.link === newVac.link) &&
-              !currentPending.some(pVac => pVac.link === newVac.link)
+            const fresh = validRes.filter(newVac => 
+              !currentList.some(oldVac => getBaseLink(oldVac.link) === getBaseLink(newVac.link)) &&
+              !currentPending.some(pVac => getBaseLink(pVac.link) === getBaseLink(newVac.link))
             );
             
             if (fresh.length > 0) {
@@ -174,20 +281,16 @@ function ApplicationContent() {
               newItems = [...newItems, ...fresh];
             }
           }
-        } catch (e) {
-          // Игнорируем сетевые ошибки парсеров в фоне
-        }
+        } catch (e) {}
       }
 
       if (foundNew && newItems.length > 0) {
         setPendingVacancies(prev => {
            const updatedPending = [...newItems, ...prev];
-           
            sendNotification({ 
              title: 'Срочно проверяй! 🚀', 
              body: `Спеши проверить новые вакансии и откликнуться первым. Найдено ${updatedPending.length} вакансий.`
            });
-
            return updatedPending;
         });
       }
@@ -219,7 +322,8 @@ function ApplicationContent() {
       try {
         const res = await invoke<Vacancy[]>("search_jobs", { query, site: s, page: 0 });
         if (Array.isArray(res)) {
-            initialAcc = [...initialAcc, ...res];
+            const validRes = res.filter(v => isJobMatch(v.title, query));
+            initialAcc = [...initialAcc, ...validRes];
             setAllVacancies(shuffleResults([...initialAcc])); 
         }
       } catch (e) {}
@@ -238,7 +342,10 @@ function ApplicationContent() {
         for (const s of sites) {
             try {
                 const res = await invoke<Vacancy[]>("search_jobs", { query, site: s, page: p });
-                if (Array.isArray(res)) pageItems = [...pageItems, ...res];
+                if (Array.isArray(res)) {
+                   const validRes = res.filter(v => isJobMatch(v.title, query));
+                   pageItems = [...pageItems, ...validRes];
+                }
             } catch (e) {}
         }
         if (pageItems.length > 0) setAllVacancies(prev => [...prev, ...shuffleResults(pageItems)]);
@@ -260,7 +367,7 @@ function ApplicationContent() {
     const isServiceLink = v.link.toLowerCase().includes("github.com") || v.link.toLowerCase().includes("linkedin.com");
     if (!isServiceLink) {
       setVisitedVacancies(prev => {
-        const exists = prev.some(item => item.link === v.link);
+        const exists = prev.some(item => getBaseLink(item.link) === getBaseLink(v.link));
         if (exists) return prev;
         const next = [v, ...prev];
         localStorage.setItem("jobSonar_visited", JSON.stringify(next));
@@ -272,17 +379,18 @@ function ApplicationContent() {
 
   const toggleFavorite = (v: Vacancy) => {
     if (!v || !v.link) return;
-    const isFav = favorites.some(f => f?.link === v.link);
-    let newFavs = isFav ? favorites.filter(f => f?.link !== v.link) : [...favorites, v];
-    setFavorites(newFavs); invoke("save_favorites", { items: newFavs });
+    const isFav = favorites.some(f => getBaseLink(f?.link) === getBaseLink(v.link));
+    let newFavs = isFav 
+        ? favorites.filter(f => getBaseLink(f?.link) !== getBaseLink(v.link)) 
+        : [...favorites, v];
+    setFavorites(newFavs); 
+    invoke("save_favorites", { items: newFavs });
   };
 
   const filteredList = useMemo(() => {
     const rawList = view === "search" ? allVacancies : view === "favorites" ? favorites : visitedVacancies;
     if (!Array.isArray(rawList)) return [];
 
-    const queryWords = (activeSearch || "").toLowerCase().split(/\s+/).filter(w => w.length > 2);
-    
     return rawList.filter(v => {
       if (!v) return false;
       const link = (v.link || "").toLowerCase();
@@ -293,9 +401,8 @@ function ApplicationContent() {
         if (reqDomain && !link.includes(reqDomain)) return false;
       }
       
-      if (view === "search" && queryWords.length > 0) {
-        const title = (v.title || "").toLowerCase();
-        if (!queryWords.every(word => title.includes(word))) return false;
+      if (view !== "search" && activeSearch) {
+        if (!isJobMatch(v.title, activeSearch)) return false;
       }
       
       return true;
@@ -380,7 +487,10 @@ function ApplicationContent() {
             <div className="sticky top-0 z-40 flex justify-center w-full pointer-events-none">
               <button
                 onClick={() => {
-                  setAllVacancies(prev => [...pendingVacancies, ...prev]);
+                  setAllVacancies(prev => {
+                     const uniquePending = pendingVacancies.filter(p => !prev.some(a => getBaseLink(a.link) === getBaseLink(p.link)));
+                     return [...uniquePending, ...prev];
+                  });
                   setPendingVacancies([]);
                   if (scrollRef.current) scrollRef.current.scrollTop = 0;
                 }}
@@ -399,9 +509,9 @@ function ApplicationContent() {
           ) : (
             <div className="flex flex-col gap-5 max-w-5xl mx-auto pb-10">
               {displayedList.map((v, index) => {
-                const safeKey = `${v?.link || index}-${index}`;
-                const isFav = favorites.some(f => f?.link === v?.link);
-                const isVisitedInSearch = visitedVacancies.some(historyItem => historyItem?.link === v?.link);
+                const safeKey = `${getBaseLink(v?.link) || index}-${index}`;
+                const isFav = favorites.some(f => getBaseLink(f?.link) === getBaseLink(v?.link));
+                const isVisitedInSearch = visitedVacancies.some(historyItem => getBaseLink(historyItem?.link) === getBaseLink(v?.link));
                 const shouldMute = isVisitedInSearch && view !== "history";
                 const sL = (v?.salary || "").toLowerCase();
                 const isSalaryMissing = sL.includes("не указана") || sL.includes("договоренности") || sL === "";
