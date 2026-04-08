@@ -115,8 +115,8 @@ function ApplicationContent() {
   const [filterSite, setFilterSite] = useState("all");
   const [view, setView] = useState<"search" | "favorites" | "history">("search");
   
-  const [appVersion, setAppVersion] = useState("1.0.11");
-  const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string}>({ show: false, version: "" });
+  const [appVersion, setAppVersion] = useState("1.0.13");
+  const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string, notified: boolean}>({ show: false, version: "", notified: false });
 
   const [allVacancies, setAllVacancies] = useState<Vacancy[]>([]);
   const [pendingVacancies, setPendingVacancies] = useState<Vacancy[]>([]); 
@@ -206,10 +206,20 @@ function ApplicationContent() {
         if (!response.ok) return;
         const data = await response.json();
         const latest = (data?.tag_name || "").replace('v', '');
-        if (latest && latest !== current) setUpdateInfo({ show: true, version: latest });
+        
+        if (latest && latest !== current) {
+          setUpdateInfo(prev => {
+            if (prev.version === latest) return prev;
+            sendNotification({ title: 'Выкатили обнову! 🚀', body: 'Срочно идем обновлять, ссылка внутри приложения' });
+            return { show: true, version: latest, notified: true };
+          });
+        }
       } catch (e) {}
     };
+
     checkUpdates();
+    const intervalId = setInterval(checkUpdates, 30 * 60 * 1000);
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -382,10 +392,9 @@ function ApplicationContent() {
   
   const isSearchCompleted = hasSearched && !isLoading && !isFetchingBackground && activeSearch === searchQuery && searchQuery.trim() !== "";
 
-  // Обработчик нажатия Enter
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      e.preventDefault(); // Предотвращаем дефолтное поведение формы
+      e.preventDefault(); 
       if (searchQuery.trim() && !isLoading && !isFetchingBackground) {
         handleSearch();
       }
@@ -399,14 +408,27 @@ function ApplicationContent() {
         <h1 className="text-2xl font-black italic tracking-tighter mb-10 px-2 transition-colors" style={{ color: theme === 'light' ? '#3F3F46' : '#FFFFFF' }}>Robotничкофф</h1>
         
         <nav className="space-y-3 flex-1">
-          <button onClick={() => { setView("search"); setFilterSite("all"); }} className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${view === "search" ? 'bg-[#3F3F46] text-white shadow-lg' : 'opacity-60 hover:opacity-100 hover:bg-slate-100 dark:hover:bg-white/5'}`}>🔍 Поиск</button>
-          <button onClick={() => { setView("favorites"); setFilterSite("all"); }} className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-between transition-all ${view === "favorites" ? 'bg-red-500 text-white shadow-lg' : 'opacity-60 hover:opacity-100 hover:bg-slate-100 dark:hover:bg-white/5'}`}>
-            <span>❤️ Избранное</span>
-            {favorites.length > 0 && <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ml-2 ${view === "favorites" ? "bg-white text-red-500" : "bg-red-500 text-white"}`}>{favorites.length}</span>}
+          <button 
+            onClick={() => { setView("search"); setFilterSite("all"); }} 
+            className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold transition-all outline-none ${view === "search" ? 'bg-[#3F3F46] text-white shadow-lg' : 'text-[var(--text-dim)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10'}`}
+          >
+            🔍 Поиск
           </button>
-          <button onClick={() => { setView("history"); setFilterSite("all"); }} className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-between transition-all ${view === "history" ? 'bg-[#3F3F46] text-white shadow-lg' : 'opacity-60 hover:opacity-100 hover:bg-slate-100 dark:hover:bg-white/5'}`}>
+          
+          <button 
+            onClick={() => { setView("favorites"); setFilterSite("all"); }} 
+            className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-between transition-all outline-none ${view === "favorites" ? 'bg-[#3F3F46] text-white shadow-lg' : 'text-[var(--text-dim)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10'}`}
+          >
+            <span>❤️ Избранное</span>
+            {favorites.length > 0 && <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ml-2 transition-colors ${view === "favorites" ? "bg-white text-[#3F3F46]" : "bg-[var(--text-dim)] text-white"}`}>{favorites.length}</span>}
+          </button>
+          
+          <button 
+            onClick={() => { setView("history"); setFilterSite("all"); }} 
+            className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-between transition-all outline-none ${view === "history" ? 'bg-[#3F3F46] text-white shadow-lg' : 'text-[var(--text-dim)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10'}`}
+          >
             <span>🕒 Вы смотрели</span>
-            {visitedVacancies.length > 0 && <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ml-2 transition-colors ${view === "history" ? "bg-white text-[#3F3F46]" : "bg-[#3F3F46] text-white"}`}>{visitedVacancies.length}</span>}
+            {visitedVacancies.length > 0 && <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ml-2 transition-colors ${view === "history" ? "bg-white text-[#3F3F46]" : "bg-[var(--text-dim)] text-white"}`}>{visitedVacancies.length}</span>}
           </button>
         </nav>
         
@@ -416,6 +438,14 @@ function ApplicationContent() {
             <div className={`theme-label ${theme === 'light' ? 'active' : ''}`}>☀️ Светлая</div>
             <div className={`theme-label ${theme === 'dark' ? 'active' : ''}`}>🌙 Темная</div>
           </div>
+        </div>
+
+        {/* ОБНОВЛЕННАЯ ССЫЛКА НА АВТОРА */}
+        <div 
+          onClick={() => invoke("open_browser", { url: "https://www.linkedin.com/in/andreevav/" })} 
+          className="author-credit"
+        >
+          Связаться с автором
         </div>
       </aside>
 
@@ -531,7 +561,7 @@ function ApplicationContent() {
                 const isSalaryMissing = (v?.salary || "").toLowerCase().includes("не указана") || (v?.salary || "") === "";
 
                 return (
-                  <div key={safeKey} onClick={() => handleOpenLink(v)} className={`vacancy-card cursor-pointer transition-transform active:scale-[0.99] group ${shouldMute ? 'visited-card' : ''}`}>
+                  <div key={safeKey} onClick={() => handleOpenLink(v)} className={`vacancy-card cursor-pointer group ${shouldMute ? 'visited-card' : ''}`}>
                     <div className="flex items-center flex-1 min-w-0">
                       <div className="service-logo-container"><ServiceLogo link={v?.link || ""} /></div>
                       <div className="text-stack flex-1 min-w-0">
