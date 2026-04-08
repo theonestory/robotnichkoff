@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { AptabaseProvider, useAptabase } from "@aptabase/react";
@@ -18,6 +18,7 @@ const FILTER_SITES = [
 ];
 
 const shuffleResults = (array: Vacancy[]) => {
+  if (!Array.isArray(array)) return [];
   let currentIndex = array.length, randomIndex;
   const newArray = [...array];
   while (currentIndex !== 0) {
@@ -29,7 +30,7 @@ const shuffleResults = (array: Vacancy[]) => {
 };
 
 const ServiceLogo = ({ link }: { link: string }) => {
-  const url = link.toLowerCase();
+  const url = (link || "").toLowerCase();
   let src = "";
   if (url.includes("hh.ru")) src = hhLogo;
   else if (url.includes("habr.com")) src = habrLogo;
@@ -45,29 +46,56 @@ const ServiceLogo = ({ link }: { link: string }) => {
 };
 
 function ApplicationContent() {
-  const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [favorites, setFavorites] = useState<Vacancy[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadMore, setIsLoadMore] = useState(false); // Для индикации загрузки "еще"
-  const [searchQuery, setSearchQuery] = useState("Менеджер");
-  const [filterSite, setFilterSite] = useState("all");
-  const [view, setView] = useState<"search" | "favorites">("search");
-  const [visitedVacancies, setVisitedVacancies] = useState<string[]>([]);
+  const [visitedVacancies, setVisitedVacancies] = useState<Vacancy[]>([]);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
   
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+  
+  const [filterSite, setFilterSite] = useState("all");
+  const [view, setView] = useState<"search" | "favorites" | "history">("search");
   const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string}>({ show: false, version: "" });
-  const [strictMode, setStrictMode] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0); // Стейт страницы
 
+  const [allVacancies, setAllVacancies] = useState<Vacancy[]>([]);
+  const [displayCount, setDisplayCount] = useState(20);
+  const [nextFetchPage, setNextFetchPage] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingBackground, setIsFetchingBackground] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const scrollRef = useRef<HTMLElement>(null);
   const { trackEvent } = useAptabase();
 
+  // Автоматический сброс скролла при смене вкладок
   useEffect(() => {
-    invoke<Vacancy[]>("load_favorites").then(res => setFavorites(res));
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [filterSite, view]);
+
+  useEffect(() => {
+    invoke<Vacancy[]>("load_favorites")
+      .then(res => { if (Array.isArray(res)) setFavorites(res); })
+      .catch(() => setFavorites([]));
+
     const savedVisited = localStorage.getItem("jobSonar_visited");
-    if (savedVisited) setVisitedVacancies(JSON.parse(savedVisited));
+    if (savedVisited) {
+      try {
+        const parsed = JSON.parse(savedVisited);
+        if (Array.isArray(parsed)) {
+          const migrated = parsed.map(item => 
+            typeof item === 'string' 
+              ? { title: "Просмотренная вакансия", link: item, company: "", salary: "" } 
+              : item
+          );
+          setVisitedVacancies(migrated);
+        }
+      } catch (e) {}
+    }
+    
     document.documentElement.className = theme;
     localStorage.setItem("theme", theme);
-    trackEvent("theme_changed", { theme });
   }, [theme]);
 
   useEffect(() => {
@@ -77,230 +105,318 @@ function ApplicationContent() {
         const response = await fetch('https://api.github.com/repos/theonestory/robotnichkoff/releases/latest');
         if (!response.ok) return;
         const data = await response.json();
-        const latest = data.tag_name.replace('v', '');
-        
-        if (latest !== current) {
-          setUpdateInfo({ show: true, version: latest });
-          trackEvent("update_available", { current, latest });
-        }
-      } catch (e) { console.error("Ошибка проверки обновления:", e); }
+        const latest = (data?.tag_name || "").replace('v', '');
+        if (latest && latest !== current) setUpdateInfo({ show: true, version: latest });
+      } catch (e) {}
     };
     checkUpdates();
-    trackEvent("app_started");
   }, []);
 
-  const handleSearch = async (isNextPage = false) => {
-    if (!searchQuery.trim()) return;
+  const handleSearch = async () => {
+    const query = (searchQuery || "").trim();
+    if (!query || isLoading || isFetchingBackground) return;
     
-    const targetPage = isNextPage ? currentPage + 1 : 0;
-    
-    if (isNextPage) setIsLoadMore(true);
-    else {
-        setIsLoading(true);
-        setVacancies([]);
-        setCurrentPage(0);
-    }
-
+    setActiveSearch(query); 
+    setHasSearched(true); 
+    setIsLoading(true);
     setView("search");
-    trackEvent(isNextPage ? "load_more_started" : "search_started", { site_filter: filterSite, page: targetPage });
+    setFilterSite("all");
+    setAllVacancies([]);
+    setDisplayCount(20);
+    setNextFetchPage(1);
+    
+    trackEvent("search_v1_1", { query });
 
     const sites = ["hh", "habr", "superjob", "zarplata"];
-    let acc: Vacancy[] = isNextPage ? [...vacancies] : [];
-    
+    let initialAcc: Vacancy[] = [];
+
     for (const s of sites) {
       try {
-        // Передаем targetPage в Rust
-        const res = await invoke<Vacancy[]>("search_jobs", { query: searchQuery, site: s, page: targetPage });
-        acc = [...acc, ...res];
-        // Если это дозагрузка, мы перемешиваем только новые или оставляем как есть? 
-        // Лучше перемешать всё для честности выдачи
-        setVacancies(shuffleResults(acc));
-      } catch (e) { console.error(e); }
+        const res = await invoke<Vacancy[]>("search_jobs", { query, site: s, page: 0 });
+        if (Array.isArray(res)) {
+            initialAcc = [...initialAcc, ...res];
+            setAllVacancies(shuffleResults([...initialAcc])); 
+        }
+      } catch (e) { console.error(`Ошибка загрузки ${s}:`, e); }
     }
-    
-    if (isNextPage) {
-        setCurrentPage(targetPage);
-        setIsLoadMore(false);
-    } else {
-        setIsLoading(false);
+
+    setIsLoading(false);
+    backgroundFetch(query, 1, 3);
+  };
+
+  const backgroundFetch = async (query: string, startPage: number, count: number) => {
+    setIsFetchingBackground(true);
+    try {
+      for (let p = startPage; p < startPage + count; p++) {
+        const sites = ["hh", "habr", "superjob", "zarplata"];
+        let pageItems: Vacancy[] = [];
+        
+        for (const s of sites) {
+            try {
+                const res = await invoke<Vacancy[]>("search_jobs", { query, site: s, page: p });
+                if (Array.isArray(res)) {
+                    pageItems = [...pageItems, ...res];
+                }
+            } catch (e) {}
+        }
+        
+        if (pageItems.length > 0) {
+            setAllVacancies(prev => [...prev, ...shuffleResults(pageItems)]);
+        }
+        setNextFetchPage(p + 1);
+      }
+    } catch (e) {} finally {
+      setIsFetchingBackground(false);
     }
   };
 
-  const handleOpenLink = (url: string) => {
-    if (!url.includes("linkedin") && !visitedVacancies.includes(url)) {
-      const n = [...visitedVacancies, url];
-      setVisitedVacancies(n); localStorage.setItem("jobSonar_visited", JSON.stringify(n));
-      trackEvent("vacancy_opened", { url: url.split('/')[2] });
+  const handleShowMore = () => {
+    const next = displayCount + 20;
+    setDisplayCount(next);
+    if (view === "search" && allVacancies.length - next < 30 && !isFetchingBackground) {
+      backgroundFetch(activeSearch, nextFetchPage, 3);
     }
-    invoke("open_browser", { url });
+  };
+
+  const handleOpenLink = (v: Vacancy) => {
+    if (!v || !v.link) return;
+    if (!v.link.includes("linkedin")) {
+      setVisitedVacancies(prev => {
+        const exists = prev.some(item => item.link === v.link);
+        if (exists) return prev;
+        const next = [v, ...prev];
+        localStorage.setItem("jobSonar_visited", JSON.stringify(next));
+        return next;
+      });
+    }
+    invoke("open_browser", { url: v.link });
   };
 
   const toggleFavorite = (v: Vacancy) => {
-    const isFav = favorites.some(fav => fav.link === v.link);
-    let newFavs = isFav ? favorites.filter(f => f.link !== v.link) : [...favorites, v];
+    if (!v || !v.link) return;
+    const isFav = favorites.some(f => f?.link === v.link);
+    let newFavs = isFav ? favorites.filter(f => f?.link !== v.link) : [...favorites, v];
     setFavorites(newFavs); invoke("save_favorites", { items: newFavs });
-    trackEvent(isFav ? "favorite_removed" : "favorite_added");
   };
 
+  const filteredList = useMemo(() => {
+    const rawList = view === "search" ? allVacancies : view === "favorites" ? favorites : visitedVacancies;
+    if (!Array.isArray(rawList)) return [];
+
+    const queryWords = (activeSearch || "").toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    
+    return rawList.filter(v => {
+      if (!v) return false;
+      const link = (v.link || "").toLowerCase();
+      
+      if (filterSite !== "all") {
+        const domains: Record<string, string> = { hh: "hh.ru", habr: "habr.com", superjob: "superjob.ru", zarplata: "zarplata.ru" };
+        const reqDomain = domains[filterSite];
+        if (reqDomain && !link.includes(reqDomain)) return false;
+      }
+      
+      if (view === "search" && queryWords.length > 0) {
+        const title = (v.title || "").toLowerCase();
+        if (!queryWords.every(word => title.includes(word))) return false;
+      }
+      
+      return true;
+    });
+  }, [allVacancies, favorites, visitedVacancies, filterSite, view, activeSearch]);
+
+  const displayedList = filteredList.slice(0, displayCount);
   const currentFilterIndex = FILTER_SITES.findIndex(s => s.id === filterSite);
+
+  const getEmptyStateText = () => {
+    if (view === "favorites") return "Нет избранных вакансий";
+    if (view === "history") return "История просмотров пуста";
+    return "Ничего не найдено";
+  };
+
+  const isEmptyState = (view === "search" && hasSearched && filteredList.length === 0) || 
+                       (view !== "search" && filteredList.length === 0);
 
   return (
     <div className="flex h-screen w-screen font-sans overflow-hidden transition-colors duration-300">
-      <aside className="w-64 border-r flex flex-col p-8 shrink-0 z-20 transition-all shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
-        <h1 className="text-2xl font-black text-blue-600 italic tracking-tighter mb-12">Robotничкофф</h1>
+      <aside className="w-64 border-r flex flex-col p-6 shrink-0 z-20 transition-all shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
+        <h1 
+          className="text-2xl font-black italic tracking-tighter mb-10 px-2 transition-colors" 
+          style={{ color: theme === 'light' ? '#3F3F46' : '#FFFFFF' }}
+        >
+          Robotничкофф
+        </h1>
         
-        <nav className="space-y-4 flex-1">
-          <button onClick={() => setView("search")} className={`w-full text-left px-5 py-3 rounded-2xl font-bold transition-all ${view === "search" ? 'bg-blue-600 text-white shadow-lg' : 'opacity-40'}`}>🔍 Поиск</button>
-          <button onClick={() => setView("favorites")} className={`w-full text-left px-5 py-3 rounded-2xl font-bold flex items-center justify-between transition-all ${view === "favorites" ? 'bg-red-500 text-white shadow-lg' : 'opacity-40'}`}>
+        <nav className="space-y-3 flex-1">
+          <button 
+            onClick={() => { setView("search"); setFilterSite("all"); }} 
+            className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${view === "search" ? 'bg-[#3F3F46] text-white shadow-lg' : 'opacity-60 hover:opacity-100 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+          >
+            🔍 Поиск
+          </button>
+          
+          <button 
+            onClick={() => { setView("favorites"); setFilterSite("all"); }} 
+            className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-between transition-all ${view === "favorites" ? 'bg-red-500 text-white shadow-lg' : 'opacity-60 hover:opacity-100 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+          >
             <span>❤️ Избранное</span>
-            {favorites.length > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white text-red-500 font-black ml-2">{favorites.length}</span>}
+            {favorites.length > 0 && <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ml-2 ${view === "favorites" ? "bg-white text-red-500" : "bg-red-500 text-white"}`}>{favorites.length}</span>}
+          </button>
+
+          <button 
+            onClick={() => { setView("history"); setFilterSite("all"); }} 
+            className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-between transition-all ${view === "history" ? 'bg-[#3F3F46] text-white shadow-lg' : 'opacity-60 hover:opacity-100 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+          >
+            <span>🕒 Вы смотрели</span>
+            {visitedVacancies.length > 0 && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ml-2 transition-colors ${view === "history" ? "bg-white text-[#3F3F46]" : "bg-[#3F3F46] text-white"}`}>
+                {visitedVacancies.length}
+              </span>
+            )}
           </button>
         </nav>
-        <div className="theme-toggle-container">
+        
+        <div className="theme-toggle-container pt-4">
           <div className="theme-toggle-switch" data-theme={theme} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
             <div className="theme-toggle-pill" />
             <div className={`theme-label ${theme === 'light' ? 'active' : ''}`}>☀️ Светлая</div>
             <div className={`theme-label ${theme === 'dark' ? 'active' : ''}`}>🌙 Темная</div>
           </div>
-          <div className="author-credit" onClick={() => handleOpenLink("https://www.linkedin.com/in/andreevav/")}>Автор проекта</div>
+          <div className="author-credit" onClick={() => handleOpenLink({ title: "Author", link: "https://www.linkedin.com/in/andreevav/", company: "", salary: "" })}>Автор проекта</div>
         </div>
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden min-w-0 transition-colors relative" style={{ backgroundColor: 'var(--bg-app)' }}>
-        
         {updateInfo.show && (
-          <div className="bg-blue-600 text-white px-10 py-3 flex justify-between items-center shadow-lg z-30 animate-in slide-in-from-top duration-300">
-            <div className="flex items-center gap-3">
-              <span className="text-lg">🚀</span>
-              <span className="text-sm font-black uppercase">Доступна новая версия: v{updateInfo.version}</span>
-            </div>
-            <div className="flex items-center gap-6">
-              <button onClick={() => {
-                trackEvent("update_btn_clicked");
-                handleOpenLink("https://github.com/theonestory/robotnichkoff/releases/latest");
-              }} className="bg-white text-blue-600 px-6 py-1.5 rounded-xl text-xs font-black hover:scale-105 active:scale-95 transition-all shadow-md">ОБНОВИТЬ</button>
-              <button onClick={() => setUpdateInfo({ ...updateInfo, show: false })} className="opacity-50 hover:opacity-100 text-xl font-bold">✕</button>
-            </div>
+          <div className="bg-[#3F3F46] text-white px-10 py-3 flex justify-between items-center shadow-lg z-30">
+            <span className="text-sm font-black uppercase">🚀 Доступна версия v{updateInfo.version}</span>
+            <button onClick={() => handleOpenLink({ title: "Update", link: "https://github.com/theonestory/robotnichkoff/releases/latest", company: "", salary: "" })} className="bg-white text-[#3F3F46] px-6 py-1.5 rounded-xl text-xs font-black shadow-md">ОБНОВИТЬ</button>
           </div>
         )}
-
-        <header className="border-b px-10 py-6 flex flex-col gap-5 z-10 transition-colors shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
-          <div className="flex flex-col gap-3 max-w-4xl w-full">
+        <header className="border-b px-10 py-6 z-10 shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
+          <div className="flex flex-col gap-4 max-w-4xl w-full">
             <div className="flex items-center gap-4 w-full">
-                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch(false)} className="flex-1 px-6 py-3.5 rounded-2xl text-sm font-bold outline-none transition-colors shadow-inner" style={{ backgroundColor: 'var(--input-bg)' }} placeholder="Поиск по всем сайтам..." />
-                <button onClick={() => handleSearch(false)} disabled={isLoading} className="bg-blue-600 text-white px-10 py-3.5 rounded-2xl text-sm font-black active:scale-95 transition-all shadow-md">{isLoading ? "..." : "НАЙТИ"}</button>
-            </div>
-            
-            <label className="flex items-center gap-3 px-2 cursor-pointer group w-fit mt-1">
-              <div className="relative flex items-center justify-center">
+              
+              <div className="relative flex-1 flex items-center">
                 <input 
-                  type="checkbox" 
-                  checked={strictMode} 
-                  onChange={(e) => setStrictMode(e.target.checked)} 
-                  className="sr-only peer" 
+                  type="text" 
+                  value={searchQuery} 
+                  onChange={(e) => setSearchQuery(e.target.value)} 
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()} 
+                  className="w-full px-6 py-3.5 pr-12 rounded-2xl text-sm font-bold outline-none transition-colors shadow-inner" 
+                  style={{ backgroundColor: 'var(--input-bg)' }} 
+                  placeholder="Название вакансии или должности" 
                 />
-                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200 ease-out ${strictMode ? 'bg-blue-600 border-blue-600' : 'bg-transparent'}`} style={{ borderColor: strictMode ? '' : 'var(--border)' }}>
-                  <svg className={`w-3.5 h-3.5 text-white transform transition-all duration-200 ${strictMode ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery("")} 
+                    className="absolute right-4 p-1.5 rounded-full opacity-40 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-all outline-none"
+                    style={{ color: 'var(--text-main)' }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+                )}
               </div>
-              <span className="text-xs font-bold tracking-wide transition-opacity duration-200 uppercase" style={{ color: 'var(--text-main)', opacity: strictMode ? 1 : 0.4 }}>
-                Строгий поиск <span className="font-normal opacity-70 normal-case tracking-normal ml-1">(точное совпадение)</span>
-              </span>
-            </label>
-          </div>
-          <div className="ios-slider-container max-w-4xl">
-            <div className="ios-slider-pill" style={{ left: `calc(${currentFilterIndex} * 20% + 4px)`, width: 'calc(20% - 8px)' }} />
-            {FILTER_SITES.map(s => <div key={s.id} onClick={() => setFilterSite(s.id)} className="ios-slider-item" style={{ color: filterSite === s.id ? 'var(--text-main)' : 'var(--text-dim)' }}>{s.label}</div>)}
+
+              <button 
+                onClick={handleSearch} 
+                disabled={isLoading || isFetchingBackground || !searchQuery.trim()} 
+                className="w-[48px] h-[48px] shrink-0 bg-[#3F3F46] text-white rounded-2xl flex items-center justify-center active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:active:scale-100"
+              >
+                {isLoading ? (
+                   <span className="relative flex h-4 w-4">
+                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-50"></span>
+                     <span className="relative inline-flex rounded-full h-4 w-4 bg-[#3F3F46] border-2 border-white"></span>
+                   </span>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                )}
+              </button>
+
+            </div>
+            <div className="ios-slider-container max-w-4xl mt-2">
+              <div className="ios-slider-pill" style={{ left: `calc(${currentFilterIndex} * 20% + 4px)`, width: 'calc(20% - 8px)' }} />
+              {FILTER_SITES.map(s => <div key={s.id} onClick={() => setFilterSite(s.id)} className="ios-slider-item" style={{ color: filterSite === s.id ? 'var(--text-main)' : 'var(--text-dim)' }}>{s.label}</div>)}
+            </div>
           </div>
         </header>
 
-        {(isLoading || isLoadMore) && (
-          <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none animate-in slide-in-from-bottom-8 fade-in duration-300">
+        {(isLoading || isFetchingBackground) && (
+          <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
             <div className="px-6 py-3.5 rounded-full flex items-center gap-4 shadow-2xl border pointer-events-auto transition-colors" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
-              <div className="relative flex h-3.5 w-3.5 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-600"></span>
-              </div>
-              <span className="text-xs font-black tracking-widest uppercase opacity-80" style={{ color: 'var(--text-main)' }}>
-                {isLoadMore ? "Подгружаем еще..." : "Опрашиваем площадки..."}
-              </span>
+              <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3F3F46] opacity-50"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-[#3F3F46]"></span></span>
+              <span className="text-xs font-black tracking-widest uppercase" style={{ color: 'var(--text-main)' }}>{isLoading ? "Опрашиваем площадки..." : "Фоновая подгрузка..."}</span>
             </div>
           </div>
         )}
 
-        <section className="flex-1 overflow-y-auto p-8 custom-scrollbar relative">
-          <div className="flex flex-col gap-5 max-w-5xl mx-auto pb-10">
-            {(view === "search" ? vacancies : favorites).filter(v => {
-               if (filterSite !== "all") {
-                 const domains: Record<string, string> = { hh: "hh.ru", habr: "habr.com", superjob: "superjob.ru", zarplata: "zarplata.ru" };
-                 if (!v.link.toLowerCase().includes(domains[filterSite])) return false;
-               }
-               
-               if (strictMode && view === "search") {
-                 const title = v.title.toLowerCase();
-                 const queryWords = searchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-                 if (!queryWords.every(word => title.includes(word))) return false;
-               }
-               return true;
-            }).map((v) => {
-              const isFav = favorites.some(f => f.link === v.link);
-              const isVisited = visitedVacancies.includes(v.link);
-              const sL = v.salary.toLowerCase();
-              const isSalaryMissing = sL.includes("не указана") || sL.includes("договоренности") || sL === "";
+        {isEmptyState && !isLoading && !isFetchingBackground && (
+          <section className="flex-1 flex items-center justify-center opacity-20">
+            <p className="text-[12px] font-black uppercase tracking-[0.2em] text-center">{getEmptyStateText()}</p>
+          </section>
+        )}
 
-              return (
-                <div key={v.link} className={`vacancy-card ${isVisited ? 'visited-card' : ''}`}>
-                  <div className="flex items-center flex-1 min-w-0">
-                    <div className="service-logo-container">
-                      <ServiceLogo link={v.link} />
+        {!isEmptyState && (
+          <section ref={scrollRef} className="flex-1 overflow-y-auto p-8 custom-scrollbar relative scroll-smooth">
+            <div className="flex flex-col gap-5 max-w-5xl mx-auto pb-10">
+              {displayedList.map((v, index) => {
+                const safeKey = `${v?.link || index}-${index}`;
+                const isFav = favorites.some(f => f?.link === v?.link);
+                const isVisitedInSearch = visitedVacancies.some(historyItem => historyItem?.link === v?.link);
+                const shouldMute = isVisitedInSearch && view !== "history";
+
+                const sL = (v?.salary || "").toLowerCase();
+                const isSalaryMissing = sL.includes("не указана") || sL.includes("договоренности") || sL === "";
+
+                return (
+                  <div 
+                    key={safeKey} 
+                    onClick={() => handleOpenLink(v)} 
+                    className={`vacancy-card cursor-pointer transition-transform active:scale-[0.99] group ${shouldMute ? 'visited-card' : ''}`}
+                  >
+                    <div className="flex items-center flex-1 min-w-0">
+                      <div className="service-logo-container">
+                        <ServiceLogo link={v?.link || ""} />
+                      </div>
+                      <div className="text-stack flex-1 min-w-0">
+                        <h3 className="vacancy-title truncate" title={v?.title || "Без названия"}>{v?.title || "Без названия"}</h3>
+                        <p className="company-name text-xs font-medium mt-1 truncate" style={{ color: 'var(--text-dim)' }} title={v?.company || "Компания не указана"}>{v?.company || "Компания не указана"}</p>
+                        <p className="salary-line text-xs font-bold mt-1 truncate" style={{ color: isSalaryMissing ? '#EF4444' : '#10B981' }}>{isSalaryMissing ? "ЗП: не указано" : `ЗП: ${v?.salary || ""}`}</p>
+                      </div>
                     </div>
-                    <div className="text-stack">
-                      <h3 className="vacancy-title">{v.title}</h3>
-                      <p className="company-name text-xs font-medium" style={{ color: 'var(--text-dim)' }}>{v.company || "Компания не указана"}</p>
-                      <p className="salary-line text-xs font-bold" style={{ color: isSalaryMissing ? '#EF4444' : '#10B981' }}>
-                        {isSalaryMissing ? "ЗП: не указано" : `ЗП: ${v.salary}`}
-                      </p>
+                    <div className="actions-area flex items-center gap-3 ml-6 shrink-0">
+                      <button 
+                        onClick={(e) => { 
+                          e.preventDefault();
+                          e.stopPropagation(); 
+                          toggleFavorite(v); 
+                        }} 
+                        className="round-btn relative z-10"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill={isFav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isFav ? "icon-fav-active text-red-500" : ""}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>
+                      </button>
                     </div>
                   </div>
-                  <div className="actions-area flex items-center gap-3 ml-6 shrink-0">
-                    <button onClick={() => handleOpenLink(v.link)} className="round-btn">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                    </button>
-                    <button onClick={() => toggleFavorite(v)} className="round-btn">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isFav ? "icon-fav-active" : ""}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
 
-            {/* КНОПКА ЗАГРУЗИТЬ ЕЩЕ */}
-            {view === "search" && vacancies.length > 0 && !isLoading && (
-                <div className="flex justify-center mt-4">
-                    <button 
-                        onClick={() => handleSearch(true)} 
-                        disabled={isLoadMore}
-                        className="text-blue-600 text-xs font-black uppercase tracking-widest hover:opacity-70 transition-all py-4 px-10"
-                    >
-                        {isLoadMore ? "ЗАГРУЗКА..." : "ЗАГРУЗИТЬ ЕЩЕ ВАКАНСИЙ"}
-                    </button>
-                </div>
-            )}
-          </div>
-        </section>
+              {filteredList.length > displayCount && !isLoading && (
+                  <div className="flex justify-center mt-8 pb-12">
+                      <button 
+                        onClick={handleShowMore} 
+                        className="text-[10px] font-black uppercase tracking-[0.2em] transition-all opacity-60 hover:opacity-100 active:scale-95 outline-none"
+                        style={{ color: 'var(--text-dim)' }}
+                      >
+                        Показать еще
+                      </button>
+                  </div>
+              )}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
 }
 
-function App() {
-  return (
-    <AptabaseProvider appKey="A-US-3662138873">
-      <ApplicationContent />
-    </AptabaseProvider>
-  );
-}
-
+function App() { return ( <AptabaseProvider appKey="A-US-3662138873"><ApplicationContent /></AptabaseProvider> ); }
 export default App;

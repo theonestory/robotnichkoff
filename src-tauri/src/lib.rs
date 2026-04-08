@@ -42,7 +42,6 @@ async fn search_jobs(query: String, site: String, page: u32) -> Result<Vec<Vacan
 
     if site == "hh" || site == "zarplata" {
         let base_url = if site == "hh" { "https://hh.ru" } else { "https://www.zarplata.ru" };
-        // Добавлен параметр &page
         let url = format!("{}/search/vacancy?text={}&area=113&page={}", base_url, query, page);
         
         let response = client.get(&url).header(USER_AGENT, ua).header(ACCEPT_LANGUAGE, "ru-RU,ru;q=0.9").send().await.map_err(|e| e.to_string())?;
@@ -89,7 +88,6 @@ async fn search_jobs(query: String, site: String, page: u32) -> Result<Vec<Vacan
         }
     } 
     else if site == "habr" {
-        // У Хабра пагинация начинается с 1
         let url = format!("https://career.habr.com/vacancies?q={}&type=all&page={}", query, page + 1);
         let response = client.get(&url).header(USER_AGENT, ua).send().await.map_err(|e| e.to_string())?;
         let document = Html::parse_document(&response.text().await.map_err(|e| e.to_string())?);
@@ -107,7 +105,6 @@ async fn search_jobs(query: String, site: String, page: u32) -> Result<Vec<Vacan
         }
     }
     else if site == "superjob" {
-        // У SuperJob пагинация начинается с 1
         let url = format!("https://www.superjob.ru/vacancy/search/?keywords={}&page={}", query, page + 1);
         let response = client.get(&url).header(USER_AGENT, ua).send().await.map_err(|e| e.to_string())?;
         let document = Html::parse_document(&response.text().await.map_err(|e| e.to_string())?);
