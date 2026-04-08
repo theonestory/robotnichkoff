@@ -4,6 +4,10 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::process::Command;
 
+// Добавлен AppHandle для строгой типизации
+use tauri::{menu::{Menu, MenuItem}, tray::TrayIconBuilder, AppHandle, Manager, WindowEvent};
+use tauri_plugin_notification::NotificationExt;
+
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
@@ -143,6 +147,46 @@ fn load_favorites() -> Result<Vec<Vacancy>, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init()) 
+        .setup(|app| {
+            let quit_i = MenuItem::with_id(app, "quit", "Выйти из Роботничкоффа", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Развернуть радар", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
+
+            let _tray = TrayIconBuilder::new()
+                .menu(&menu)
+                .show_menu_on_left_click(true)
+                .icon(app.default_window_icon().unwrap().clone())
+                // ЯВНОЕ УКАЗАНИЕ ТИПА &AppHandle ДЛЯ КОМПИЛЯТОРА RUST
+                .on_menu_event(|app: &AppHandle, event| match event.id.as_ref() {
+                    "quit" => {
+                        std::process::exit(0); 
+                    }
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            window.show().unwrap();
+                            window.set_focus().unwrap();
+                        }
+                    }
+                    _ => {}
+                })
+                .build(app)?;
+
+            Ok(())
+        })
+        .on_window_event(|window, event| match event {
+            WindowEvent::CloseRequested { api, .. } => {
+                api.prevent_close(); 
+                window.hide().unwrap(); 
+                
+                let _ = window.app_handle().notification()
+                    .builder()
+                    .title("Радар активен 🦾")
+                    .body("Роботничкофф свернут в трей и продолжает искать новые вакансии.")
+                    .show();
+            }
+            _ => {}
+        })
         .invoke_handler(tauri::generate_handler![search_jobs, save_favorites, load_favorites, open_browser]) 
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
