@@ -54,39 +54,86 @@ async fn search_jobs(query: String, site: String, page: u32) -> Result<Vec<Vacan
         
         let vacancy_selector = Selector::parse("[data-qa='serp-item'], [data-qa='vacancy-serp__vacancy']").unwrap();
         let title_selector = Selector::parse("[data-qa*='title'], [data-qa='serp-item__title']").unwrap();
-        let company_selector = Selector::parse("[data-qa='vacancy-serp__vacancy-employer'], [data-qa='vacancy-employer'], [data-qa='serp-item__meta-info-company'], .vacancy-serp-item__meta-info").unwrap();
-        let salary_selector = Selector::parse("[data-qa='serp-item__compensation'], [data-qa='vacancy-serp__vacancy-compensation']").unwrap();
-        let fallback_selector = Selector::parse("span, div").unwrap();
+        
+        let company_selector = Selector::parse("\
+            [data-qa='vacancy-serp__vacancy-employer'], \
+            [data-qa='vacancy-employer'], \
+            [data-qa='serp-item__meta-info-company'], \
+            [data-qa='vacancy-company-name'], \
+            .vacancy-serp-item__meta-info\
+        ").unwrap();
+        
+        let salary_selector = Selector::parse("\
+            [data-qa='serp-item__compensation'], \
+            [data-qa='vacancy-serp__vacancy-compensation'], \
+            [data-qa='vacancy-salary-compensation-type-gross'], \
+            [data-qa='vacancy-salary-compensation-type-net'], \
+            [data-qa='vacancy-salary-compensation-type-undefined'], \
+            [data-qa='vacancy-salary'], \
+            [data-qa*='compensation']\
+        ").unwrap();
 
         for element in document.select(&vacancy_selector) {
             if let Some(t_el) = element.select(&title_selector).next() {
+                
                 let company = element.select(&company_selector)
+                    .filter_map(|c| {
+                        let norm = c.text().collect::<Vec<_>>().join(" ").split_whitespace().collect::<Vec<_>>().join(" ").replace("\u{a0}", " ");
+                        if norm.is_empty() { None } else { Some(norm) }
+                    })
                     .next()
-                    .map(|c| c.text().collect::<Vec<_>>().join(" "))
-                    .unwrap_or_default()
-                    .replace("\u{a0}", " ").trim().to_string();
+                    .unwrap_or_else(|| "Компания не указана".to_string());
 
-                let mut salary = element.select(&salary_selector)
-                    .next()
-                    .map(|s| s.text().collect::<Vec<_>>().join(" "))
-                    .unwrap_or_else(|| {
-                        element.select(&fallback_selector)
-                            .map(|s| s.text().collect::<Vec<_>>().join(" "))
-                            .find(|txt| {
-                                let t = txt.to_lowercase();
-                                (t.contains('₽') || t.contains("руб")) && (t.contains("от") || t.contains("до")) && txt.len() < 60
-                            })
-                            .unwrap_or_else(|| "З/П не указана".to_string())
-                    }).replace("\u{a0}", " ");
+                // ФЕЙС-КОНТРОЛЬ НА ВАЛЮТУ: Ищем ЗП, но берем только если там есть деньги
+                let mut salary = String::new();
+                for s_node in element.select(&salary_selector) {
+                    let txt = s_node.text().collect::<Vec<_>>().join(" ").split_whitespace().collect::<Vec<_>>().join(" ").replace("\u{a0}", " ");
+                    let t = txt.to_lowercase();
+                    // Отсекаем мусор типа "Выплаты: два раза в месяц"
+                    if t.contains('₽') || t.contains("руб") || t.contains('$') || t.contains('€') {
+                        salary = txt;
+                        break;
+                    }
+                }
 
-                if let Some(idx) = salary.find("Опыт") { salary = salary[..idx].to_string(); }
+                // УМНЫЙ ФОЛБЭК: Если стандартные теги подвели, ищем цифры по всей карточке
+                if salary.is_empty() {
+                    let mut possible_salaries: Vec<String> = element.select(&Selector::parse("span, div").unwrap())
+                        .filter_map(|s| {
+                            let norm = s.text().collect::<Vec<_>>().join(" ").split_whitespace().collect::<Vec<_>>().join(" ").replace("\u{a0}", " ");
+                            let t = norm.to_lowercase();
+                            if (t.contains('₽') || t.contains("руб") || t.contains('$') || t.contains('€')) && norm.len() > 3 && norm.len() < 150 {
+                                // Исключаем куски огромного текста
+                                if !t.contains("требования") && !t.contains("обязанности") {
+                                    Some(norm)
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    
+                    if !possible_salaries.is_empty() {
+                        possible_salaries.sort_by_key(|a| a.len());
+                        salary = possible_salaries.into_iter().next().unwrap();
+                    } else {
+                        salary = "ЗП: не указана".to_string();
+                    }
+                }
+
+                if let Some(idx) = salary.find("Опыт") { salary = salary[..idx].trim().to_string(); }
+                let final_salary = if salary.trim().is_empty() { "ЗП: не указана".to_string() } else { salary };
                 
                 let mut link = t_el.value().attr("href").unwrap_or("").to_string();
                 if !link.starts_with("http") && !link.is_empty() { link = format!("{}{}", base_url, link); }
 
                 results.push(Vacancy {
                     title: t_el.text().collect::<Vec<_>>().join(" ").replace("\u{a0}", " ").trim().to_string(),
-                    link, company, salary: salary.trim().to_string(),
+                    link, 
+                    company, 
+                    salary: final_salary,
                 });
             }
         }
@@ -95,15 +142,36 @@ async fn search_jobs(query: String, site: String, page: u32) -> Result<Vec<Vacan
         let url = format!("https://career.habr.com/vacancies?q={}&type=all&page={}", query, page + 1);
         let response = client.get(&url).header(USER_AGENT, ua).send().await.map_err(|e| e.to_string())?;
         let document = Html::parse_document(&response.text().await.map_err(|e| e.to_string())?);
-        for element in document.select(&Selector::parse(".vacancy-card").unwrap()) {
-            if let Some(t_el) = element.select(&Selector::parse(".vacancy-card__title-link").unwrap()).next() {
+        
+        let card_selector = Selector::parse(".vacancy-card").unwrap();
+        let title_selector = Selector::parse(".vacancy-card__title-link").unwrap();
+        let company_selector = Selector::parse(".vacancy-card__company-title, .vacancy-card__company, .link-comp, .company_name").unwrap();
+        let salary_selector = Selector::parse(".vacancy-card__salary").unwrap();
+
+        for element in document.select(&card_selector) {
+            if let Some(t_el) = element.select(&title_selector).next() {
                 let raw_link = t_el.value().attr("href").unwrap_or("");
                 let link = if raw_link.starts_with("http") { raw_link.to_string() } else { format!("https://career.habr.com{}", raw_link) };
+                
+                let company = element.select(&company_selector)
+                    .filter_map(|c| {
+                        let norm = c.text().collect::<Vec<_>>().join(" ").split_whitespace().collect::<Vec<_>>().join(" ");
+                        if norm.is_empty() { None } else { Some(norm) }
+                    })
+                    .next()
+                    .unwrap_or_else(|| "Компания не указана".to_string());
+
+                let salary = element.select(&salary_selector)
+                    .filter_map(|s| {
+                        let norm = s.text().collect::<Vec<_>>().join(" ").split_whitespace().collect::<Vec<_>>().join(" ");
+                        if norm.is_empty() { None } else { Some(norm) }
+                    })
+                    .next()
+                    .unwrap_or_else(|| "ЗП: не указана".to_string());
+
                 results.push(Vacancy {
                     title: t_el.text().collect::<Vec<_>>().join(" ").trim().to_string(),
-                    link,
-                    company: element.select(&Selector::parse(".vacancy-card__company-title").unwrap()).next().map(|c| c.text().collect::<Vec<_>>().join(" ")).unwrap_or_default().trim().to_string(),
-                    salary: element.select(&Selector::parse(".vacancy-card__salary").unwrap()).next().map(|s| s.text().collect::<Vec<_>>().join(" ")).unwrap_or_else(|| "З/П не указана".to_string()),
+                    link, company, salary,
                 });
             }
         }
@@ -112,15 +180,36 @@ async fn search_jobs(query: String, site: String, page: u32) -> Result<Vec<Vacan
         let url = format!("https://www.superjob.ru/vacancy/search/?keywords={}&page={}", query, page + 1);
         let response = client.get(&url).header(USER_AGENT, ua).send().await.map_err(|e| e.to_string())?;
         let document = Html::parse_document(&response.text().await.map_err(|e| e.to_string())?);
-        for element in document.select(&Selector::parse("div[class*='f-test-vacancy-item']").unwrap()) {
-            if let Some(t_el) = element.select(&Selector::parse("a[class*='f-test-link'][href*='/vakansii/']").unwrap()).next() {
+        
+        let card_selector = Selector::parse("div[class*='f-test-vacancy-item']").unwrap();
+        let title_selector = Selector::parse("a[class*='f-test-link'][href*='/vakansii/']").unwrap();
+        let company_selector = Selector::parse("span[class*='f-test-text-vacancy-item-company']").unwrap();
+        let salary_selector = Selector::parse("span[class*='f-test-text-company-item-salary']").unwrap();
+
+        for element in document.select(&card_selector) {
+            if let Some(t_el) = element.select(&title_selector).next() {
                 let raw_link = t_el.value().attr("href").unwrap_or("");
                 let link = if raw_link.starts_with("http") { raw_link.to_string() } else { format!("https://www.superjob.ru{}", raw_link) };
+                
+                let company = element.select(&company_selector)
+                    .filter_map(|c| {
+                        let norm = c.text().collect::<Vec<_>>().join(" ").split_whitespace().collect::<Vec<_>>().join(" ");
+                        if norm.is_empty() { None } else { Some(norm) }
+                    })
+                    .next()
+                    .unwrap_or_else(|| "Компания не указана".to_string());
+
+                let salary = element.select(&salary_selector)
+                    .filter_map(|s| {
+                        let norm = s.text().collect::<Vec<_>>().join(" ").split_whitespace().collect::<Vec<_>>().join(" ");
+                        if norm.is_empty() { None } else { Some(norm) }
+                    })
+                    .next()
+                    .unwrap_or_else(|| "ЗП: не указана".to_string());
+
                 results.push(Vacancy { 
                     title: t_el.text().collect::<Vec<_>>().join(" ").trim().to_string(), 
-                    link, 
-                    company: element.select(&Selector::parse("span[class*='f-test-text-vacancy-item-company']").unwrap()).next().map(|c| c.text().collect::<Vec<_>>().join(" ")).unwrap_or_else(|| "Компания".to_string()).trim().to_string(),
-                    salary: element.select(&Selector::parse("span[class*='f-test-text-company-item-salary']").unwrap()).next().map(|s| s.text().collect::<Vec<_>>().join(" ")).unwrap_or_else(|| "По договоренности".to_string()),
+                    link, company, salary,
                 });
             }
         }
@@ -157,7 +246,6 @@ pub fn run() {
                 .menu(&menu)
                 .show_menu_on_left_click(true)
                 .icon(app.default_window_icon().unwrap().clone())
-                // ЯВНОЕ УКАЗАНИЕ ТИПА &AppHandle ДЛЯ КОМПИЛЯТОРА RUST
                 .on_menu_event(|app: &AppHandle, event| match event.id.as_ref() {
                     "quit" => {
                         std::process::exit(0); 

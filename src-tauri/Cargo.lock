@@ -3344,7 +3344,7 @@ dependencies = [
 
 [[package]]
 name = "robotnichkoff"
-version = "1.0.10"
+version = "1.0.11"
 dependencies = [
  "reqwest 0.12.28",
  "scraper",

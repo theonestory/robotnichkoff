@@ -30,9 +30,36 @@ const shuffleResults = (array: Vacancy[]) => {
   return newArray;
 };
 
+// Жесткая очистка ссылок
 const getBaseLink = (url: string) => {
   if (!url) return "";
-  return url.split('?')[0].toLowerCase();
+  let base = url.split('?')[0].split('#')[0].toLowerCase().trim();
+  base = base.replace(/^https?:\/\//, '');
+  base = base.replace(/^(www\.|m\.)/, '');
+  if (base.endsWith('/')) base = base.slice(0, -1);
+  return base;
+};
+
+const cleanStr = (s: string) => (s || "").toLowerCase().trim();
+
+// АНТИ-ДУБЛЬ 2.0: Сверяем и по ссылке, и по тексту (защита от перепостов HR)
+const isDuplicate = (a: Vacancy, b: Vacancy) => {
+   if (!a || !b) return false;
+   
+   const linkA = getBaseLink(a.link);
+   const linkB = getBaseLink(b.link);
+   if (linkA === linkB && linkA !== "") return true;
+   
+   const titleA = cleanStr(a.title);
+   const titleB = cleanStr(b.title);
+   const compA = cleanStr(a.company);
+   const compB = cleanStr(b.company);
+   
+   if (titleA && compA && titleA === titleB && compA === compB) {
+       return true; // Это та же вакансия, просто перезалитая или с другого сайта
+   }
+   
+   return false;
 };
 
 // УМНЫЙ ФИЛЬТР: Строгое разделение ролей и C-level
@@ -42,69 +69,46 @@ const isJobMatch = (title: string, query: string) => {
   const q = query.toLowerCase().trim();
 
   const dict: Record<string, string[]> = {
-    // --- C-LEVEL ---
     "ceo": ["генеральный директор", "гендиректор", "chief executive officer"],
     "генеральный директор": ["ceo", "chief executive officer", "гендиректор"],
-    
     "cmo": ["директор по маркетингу", "маркетинг директор", "chief marketing officer"],
     "директор по маркетингу": ["cmo", "chief marketing officer", "маркетинг директор"],
-    
     "cfo": ["финансовый директор", "директор по финансам", "chief financial officer"],
     "финансовый директор": ["cfo", "chief financial officer", "директор по финансам"],
-    
     "coo": ["операционный директор", "chief operating officer"],
     "операционный директор": ["coo", "chief operating officer"],
-    
     "cpo": ["chief product officer", "директор по продукту"],
     "директор по продукту": ["cpo", "chief product officer"],
-    
     "cto": ["технический директор", "chief technology officer"],
     "технический директор": ["cto", "chief technology officer"],
-
-    // --- PRODUCT & PROJECT ---
     "владелец продукта": ["product owner", "po"],
     "product owner": ["владелец продукта", "po"],
     "po": ["product owner", "владелец продукта"],
-    
     "product manager": ["менеджер продукта", "продакт", "продакт-менеджер"],
     "менеджер продукта": ["product manager", "продакт", "продакт-менеджер"],
     "продакт": ["product manager", "менеджер продукта", "продакт-менеджер"],
-    
     "project manager": ["руководитель проекта", "менеджер проекта", "проджект", "pm"],
     "руководитель проекта": ["project manager", "менеджер проекта", "проджект", "pm"],
     "менеджер проекта": ["project manager", "руководитель проекта", "проджект", "pm"],
     "проджект": ["project manager", "менеджер проекта", "руководитель проекта", "pm"],
     "pm": ["project manager", "менеджер проекта", "руководитель проекта", "проджект"],
-
-    // --- TECH & ENGINEERING ---
     "tech lead": ["техлид", "технический лидер"],
     "техлид": ["tech lead", "технический лидер"],
-    
     "frontend": ["фронтенд", "фронт", "react", "vue", "angular", "front-end"],
     "фронтенд": ["frontend", "front-end", "react", "vue", "angular", "фронт"],
-    
     "backend": ["бэкенд", "бэк", "back-end", "python", "java", "golang", "php", "node", "c#"],
     "бэкенд": ["backend", "back-end", "python", "java", "golang", "php", "node", "c#", "бэк"],
-    
     "qa": ["тестировщик", "tester", "тестирование", "test", "qaa", "qa engineer"],
     "тестировщик": ["qa", "tester", "тестирование", "test", "qa engineer"],
-    
     "devops": ["девопс", "sre"],
     "девопс": ["devops", "sre"],
-    
     "android": ["андроид", "mobile", "мобильный"],
     "ios": ["айос", "mobile", "мобильный", "swift", "apple"],
     "fullstack": ["фуллстек", "full-stack", "фулстек"],
-
-    // --- DESIGN ---
     "дизайнер": ["designer", "ui/ux", "ui", "ux", "product designer", "продуктовый дизайнер"],
     "designer": ["дизайнер", "ui/ux", "ui", "ux", "product designer", "продуктовый дизайнер"],
-
-    // --- DATA & ANALYTICS ---
     "аналитик": ["analyst", "data", "bi", "dwh", "system analyst", "системный аналитик"],
     "analyst": ["аналитик", "data", "bi", "dwh", "system analyst"],
-
-    // --- HR ---
     "hr": ["рекрутер", "персонал", "recruiter", "talent", "hrbp"],
     "рекрутер": ["hr", "персонал", "recruiter", "talent"]
   };
@@ -116,7 +120,6 @@ const isJobMatch = (title: string, query: string) => {
     }
   }
 
-  // 1. Проверяем алиасы
   const exactAliasMatch = matchedAliases.some(alias => {
     if (alias.length <= 3) {
       const escapedAlias = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -128,7 +131,6 @@ const isJobMatch = (title: string, query: string) => {
   
   if (exactAliasMatch) return true;
 
-  // 2. Фолбэк: Строгая текстовая проверка
   const queryWords = q.split(/\s+/).filter(w => w.length > 1);
   if (queryWords.length > 0 && queryWords.every(w => t.includes(w))) return true;
 
@@ -248,7 +250,8 @@ function ApplicationContent() {
     if (matching.length > 0) {
        setPendingVacancies(prev => prev.filter(v => !v.link.toLowerCase().includes(reqDomain)));
        setAllVacancies(prev => {
-          const uniqueMatching = matching.filter(m => !prev.some(a => getBaseLink(a.link) === getBaseLink(m.link)));
+          // Анти-дубль при распределении
+          const uniqueMatching = matching.filter(m => !prev.some(a => isDuplicate(a, m)));
           return [...uniqueMatching, ...prev];
        });
     }
@@ -263,6 +266,10 @@ function ApplicationContent() {
       let foundNew = false;
       let newItems: Vacancy[] = [];
 
+      // НОВАЯ ЗАЩИТА: Достаем историю просмотров прямо из памяти
+      const savedVisitedRaw = localStorage.getItem("jobSonar_visited");
+      const savedVisited: Vacancy[] = savedVisitedRaw ? JSON.parse(savedVisitedRaw) : [];
+
       for (const s of sites) {
         try {
           const res = await invoke<Vacancy[]>("search_jobs", { query: activeSearch, site: s, page: 0 });
@@ -271,9 +278,11 @@ function ApplicationContent() {
             const currentList = allVacanciesRef.current;
             const currentPending = pendingVacanciesRef.current;
             
+            // АНТИ-ДУБЛЬ 3.0: Сверяем с лентой, с ожидающими И С ИСТОРИЕЙ ПРОСМОТРОВ
             const fresh = validRes.filter(newVac => 
-              !currentList.some(oldVac => getBaseLink(oldVac.link) === getBaseLink(newVac.link)) &&
-              !currentPending.some(pVac => getBaseLink(pVac.link) === getBaseLink(newVac.link))
+              !currentList.some(oldVac => isDuplicate(oldVac, newVac)) &&
+              !currentPending.some(pVac => isDuplicate(pVac, newVac)) &&
+              !savedVisited.some(visited => isDuplicate(visited, newVac))
             );
             
             if (fresh.length > 0) {
@@ -323,7 +332,10 @@ function ApplicationContent() {
         const res = await invoke<Vacancy[]>("search_jobs", { query, site: s, page: 0 });
         if (Array.isArray(res)) {
             const validRes = res.filter(v => isJobMatch(v.title, query));
-            initialAcc = [...initialAcc, ...validRes];
+            
+            // Анти-дубль на основном поиске (если HH и Хабр выдали одно и то же)
+            const uniqueValid = validRes.filter(v => !initialAcc.some(a => isDuplicate(a, v)));
+            initialAcc = [...initialAcc, ...uniqueValid];
             setAllVacancies(shuffleResults([...initialAcc])); 
         }
       } catch (e) {}
@@ -348,7 +360,13 @@ function ApplicationContent() {
                 }
             } catch (e) {}
         }
-        if (pageItems.length > 0) setAllVacancies(prev => [...prev, ...shuffleResults(pageItems)]);
+        if (pageItems.length > 0) {
+            setAllVacancies(prev => {
+               // Анти-дубль для фоновой подгрузки, чтобы лента не пухла от спама
+               const uniquePage = pageItems.filter(pItem => !prev.some(a => isDuplicate(a, pItem)));
+               return [...prev, ...shuffleResults(uniquePage)];
+            });
+        }
         setNextFetchPage(p + 1);
       }
     } catch (e) {} finally { setIsFetchingBackground(false); }
@@ -488,7 +506,8 @@ function ApplicationContent() {
               <button
                 onClick={() => {
                   setAllVacancies(prev => {
-                     const uniquePending = pendingVacancies.filter(p => !prev.some(a => getBaseLink(a.link) === getBaseLink(p.link)));
+                     // АНТИ-ДУБЛЬ при клике
+                     const uniquePending = pendingVacancies.filter(p => !prev.some(a => isDuplicate(a, p)));
                      return [...uniquePending, ...prev];
                   });
                   setPendingVacancies([]);
