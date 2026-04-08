@@ -41,7 +41,8 @@
    sudo xattr -rd com.apple.quarantine /Applications/Robotnichkoff.app
 
 ФОТО
-![photo_2026-04-08_15-20-19](https://github.com/user-attachments/assets/8b930e54-8e20-4244-b0a5-9db7effa0ece)
+<img width="1878" height="864" alt="Group 609" src="https://github.com/user-attachments/assets/9712c1ea-67a2-4b71-bdba-3610dc8687c9" />
+<img width="1904" height="877" alt="Group 608" src="https://github.com/user-attachments/assets/fe85e166-e256-4c94-90d4-9e1454a5a65e" />
 
 
 ---
