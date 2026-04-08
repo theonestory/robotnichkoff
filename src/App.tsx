@@ -67,7 +67,6 @@ function ApplicationContent() {
   const scrollRef = useRef<HTMLElement>(null);
   const { trackEvent } = useAptabase();
 
-  // Автоматический сброс скролла при смене вкладок
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
@@ -84,12 +83,20 @@ function ApplicationContent() {
       try {
         const parsed = JSON.parse(savedVisited);
         if (Array.isArray(parsed)) {
-          const migrated = parsed.map(item => 
-            typeof item === 'string' 
-              ? { title: "Просмотренная вакансия", link: item, company: "", salary: "" } 
-              : item
-          );
-          setVisitedVacancies(migrated);
+          // ИСПРАВЛЕНИЕ 1: Очищаем историю от технических ссылок при старте
+          const cleaned = parsed
+            .map(item => 
+              typeof item === 'string' 
+                ? { title: "Просмотренная вакансия", link: item, company: "", salary: "" } 
+                : item
+            )
+            .filter(v => {
+               const link = (v.link || "").toLowerCase();
+               return link && !link.includes("github.com") && !link.includes("linkedin.com");
+            });
+            
+          setVisitedVacancies(cleaned);
+          localStorage.setItem("jobSonar_visited", JSON.stringify(cleaned));
         }
       } catch (e) {}
     }
@@ -180,7 +187,11 @@ function ApplicationContent() {
 
   const handleOpenLink = (v: Vacancy) => {
     if (!v || !v.link) return;
-    if (!v.link.includes("linkedin")) {
+    
+    // ИСПРАВЛЕНИЕ 2: Блокируем запись служебных ссылок в историю
+    const isServiceLink = v.link.toLowerCase().includes("github.com") || v.link.toLowerCase().includes("linkedin.com");
+
+    if (!isServiceLink) {
       setVisitedVacancies(prev => {
         const exists = prev.some(item => item.link === v.link);
         if (exists) return prev;
