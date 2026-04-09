@@ -115,7 +115,7 @@ function ApplicationContent() {
   const [filterSite, setFilterSite] = useState("all");
   const [view, setView] = useState<"search" | "favorites" | "history">("search");
   
-  const [appVersion, setAppVersion] = useState("1.0.13");
+  const [appVersion, setAppVersion] = useState("1.0.14");
   const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string, notified: boolean}>({ show: false, version: "", notified: false });
 
   const [allVacancies, setAllVacancies] = useState<Vacancy[]>([]);
@@ -135,6 +135,7 @@ function ApplicationContent() {
   const [isSavingFilters, setIsSavingFilters] = useState(false);
   const [isSavedSuccess, setIsSavedSuccess] = useState(false);
 
+  // ВЕРНУЛИ ЭТИ ПЕРЕМЕННЫЕ
   const [draftCountry, setDraftCountry] = useState(activeCountry);
   const [draftCity, setDraftCity] = useState(activeCity);
   const [draftFormat, setDraftFormat] = useState(activeFormat);
@@ -156,6 +157,11 @@ function ApplicationContent() {
     localStorage.setItem("jobSonar_city", activeCity);
     localStorage.setItem("jobSonar_format", activeFormat);
   }, [activeCountry, activeCity, activeFormat]);
+
+  // Триггер обновления бейджа (кружочка в Dock)
+  useEffect(() => {
+    invoke("update_badge", { count: pendingVacancies.length }).catch(() => {});
+  }, [pendingVacancies.length]);
 
   const getSearchParams = (site: string) => {
     const { country, city, format } = filterRefs.current;
@@ -440,7 +446,6 @@ function ApplicationContent() {
           </div>
         </div>
 
-        {/* ОБНОВЛЕННАЯ ССЫЛКА НА АВТОРА */}
         <div 
           onClick={() => invoke("open_browser", { url: "https://www.linkedin.com/in/andreevav/" })} 
           className="author-credit"

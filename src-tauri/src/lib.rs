@@ -47,7 +47,7 @@ async fn search_jobs(
     site: String,
     page: u32,
     location: String,
-    work_format: String, // Новый параметр: формат работы
+    work_format: String,
 ) -> Result<Vec<Vacancy>, String> {
     let client = reqwest::Client::new();
     let mut results = Vec::new();
@@ -57,7 +57,6 @@ async fn search_jobs(
         let base_url = if site == "hh" { "https://hh.ru" } else { "https://www.zarplata.ru" };
         let area = if location.is_empty() { "113".to_string() } else { location };
         
-        // Подставляем и город, и формат работы в ссылку
         let url = format!("{}/search/vacancy?text={}&area={}{}&page={}", base_url, query, area, work_format, page);
         
         let response = client.get(&url).header(USER_AGENT, ua).header(ACCEPT_LANGUAGE, "ru-RU,ru;q=0.9").send().await.map_err(|e| e.to_string())?;
@@ -161,6 +160,15 @@ fn load_favorites() -> Result<Vec<Vacancy>, String> {
     Ok(Vec::new())
 }
 
+#[tauri::command]
+#[allow(unused_variables)] // Подавляем варнинги компилятора на Windows
+fn update_badge(_count: i64, _app: tauri::AppHandle) {
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    if let Some(window) = _app.get_webview_window("main") {
+        let _ = window.set_badge_count(if _count > 0 { Some(_count) } else { None });
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -203,7 +211,20 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![search_jobs, save_favorites, load_favorites, open_browser]) 
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .invoke_handler(tauri::generate_handler![search_jobs, save_favorites, load_favorites, open_browser, update_badge]) 
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|app_handle, event| match event {
+            // МАКРОС ТЕПЕРЬ СТОИТ ЗДЕСЬ. 
+            // На Windows этот блок вообще не будет компилироваться, 
+            // а на macOS он отработает идеально.
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::Reopen { .. } => {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            _ => {}
+        });
 }
