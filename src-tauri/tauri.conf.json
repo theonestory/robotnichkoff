@@ -1,6 +1,6 @@
 {
   "productName": "Robotnichkoff", 
-  "version": "1.0.14",
+  "version": "1.0.15",
   "identifier": "com.robotnichkoff.search",
   "build": {
     "beforeDevCommand": "npm run dev",
