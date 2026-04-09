@@ -1,6 +1,6 @@
 [package]
 name = "robotnichkoff"
-version = "1.0.15"
+version = "1.0.16"
 description = "Help to search job"
 authors = ["you"]
 edition = "2021"
