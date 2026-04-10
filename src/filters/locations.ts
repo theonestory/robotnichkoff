@@ -11,6 +11,8 @@ export const COUNTRIES = [
   { id: "cis", name: "СНГ" },
   { id: "europe_all", name: "Европа" },
   { id: "usa", name: "США" },
+  { id: "mena_all", name: "MENA" },
+  { id: "asia_all", name: "Азия" },
   { id: "belarus", name: "Беларусь" },
   { id: "kazakhstan", name: "Казахстан" },
   { id: "armenia", name: "Армения" },
@@ -28,12 +30,17 @@ export const COUNTRIES = [
   { id: "serbia", name: "Сербия" },
   { id: "nl", name: "Нидерланды" },
   { id: "france", name: "Франция" },
-  { id: "spain", name: "Испания" }
+  { id: "spain", name: "Испания" },
+  { id: "uae", name: "ОАЭ" },
+  { id: "turkey", name: "Турция" },
+  { id: "thailand", name: "Таиланд" },
+  { id: "indonesia", name: "Индонезия" },
+  { id: "philippines", name: "Филиппины" }
 ];
 
 export const CITIES: Record<string, { id: string; name: string; hh: string; habr: string; sj: string }[]> = {
   "all": [
-    { id: "all_any", name: "Все локации", hh: "113&area=16&area=40&area=9&area=8&area=28&area=48&area=65&area=83&area=89&area=97&area=37&area=84", habr: "", sj: "" }
+    { id: "all_any", name: "Все локации", hh: "113&area=16&area=40&area=9&area=8&area=28&area=48&area=65&area=83&area=89&area=97&area=37&area=84&area=92&area=90&area=86&area=135&area=202", habr: "", sj: "" }
   ],
   "ru_cis": [
     { id: "ru_cis_any", name: "Вся Россия и СНГ", hh: "113&area=16&area=40&area=9&area=28&area=8&area=48&area=65&area=83&area=89&area=97", habr: "", sj: "" }
@@ -60,6 +67,23 @@ export const CITIES: Record<string, { id: string; name: string; hh: string; habr
     { id: "us_la", name: "Лос-Анджелес", hh: "84", habr: "", sj: "" },
     { id: "us_seattle", name: "Сиэтл", hh: "84", habr: "", sj: "" },
     { id: "us_chicago", name: "Чикаго", hh: "84", habr: "", sj: "" }
+  ],
+  "mena_all": [
+    { id: "mena_any", name: "Все страны MENA", hh: "92&area=90&area=194&area=224&area=45", habr: "", sj: "" },
+    { id: "mena_uae", name: "ОАЭ", hh: "92", habr: "", sj: "" },
+    { id: "mena_turkey", name: "Турция", hh: "90", habr: "", sj: "" },
+    { id: "mena_sa", name: "Саудовская Аравия", hh: "194", habr: "", sj: "" },
+    { id: "mena_egypt", name: "Египет", hh: "224", habr: "", sj: "" },
+    { id: "mena_israel", name: "Израиль", hh: "45", habr: "", sj: "" }
+  ],
+  "asia_all": [
+    { id: "asia_any", name: "Вся Азия", hh: "86&area=135&area=202&area=228&area=42&area=48", habr: "", sj: "" },
+    { id: "asia_th", name: "Таиланд", hh: "86", habr: "", sj: "" },
+    { id: "asia_id", name: "Индонезия", hh: "135", habr: "", sj: "" },
+    { id: "asia_ph", name: "Филиппины", hh: "202", habr: "", sj: "" },
+    { id: "asia_vn", name: "Вьетнам", hh: "228", habr: "", sj: "" },
+    { id: "asia_in", name: "Индия", hh: "42", habr: "", sj: "" },
+    { id: "asia_cn", name: "Китай", hh: "48", habr: "", sj: "" }
   ],
   "russia": [
     { id: "ru_all", name: "Вся Россия", hh: "113", habr: "c_1", sj: "c_1" },
@@ -175,5 +199,29 @@ export const CITIES: Record<string, { id: string; name: string; hh: string; habr
     { id: "es_all", name: "Вся Испания", hh: "41", habr: "c_42", sj: "" },
     { id: "es_madrid", name: "Мадрид", hh: "41", habr: "", sj: "" },
     { id: "es_barcelona", name: "Барселона", hh: "41", habr: "", sj: "" },
+  ],
+  "uae": [
+    { id: "uae_all", name: "Все ОАЭ", hh: "92", habr: "", sj: "" },
+    { id: "uae_dubai", name: "Дубай", hh: "1220", habr: "", sj: "" },
+    { id: "uae_ad", name: "Абу-Даби", hh: "1221", habr: "", sj: "" }
+  ],
+  "turkey": [
+    { id: "tr_all", name: "Вся Турция", hh: "90", habr: "", sj: "" },
+    { id: "tr_ist", name: "Стамбул", hh: "1124", habr: "", sj: "" },
+    { id: "tr_ant", name: "Анталья", hh: "1125", habr: "", sj: "" }
+  ],
+  "thailand": [
+    { id: "th_all", name: "Весь Таиланд", hh: "86", habr: "", sj: "" },
+    { id: "th_bkk", name: "Бангкок", hh: "1109", habr: "", sj: "" },
+    { id: "th_phuket", name: "Пхукет", hh: "86", habr: "", sj: "" }
+  ],
+  "indonesia": [
+    { id: "id_all", name: "Вся Индонезия", hh: "135", habr: "", sj: "" },
+    { id: "id_bali", name: "Бали", hh: "135", habr: "", sj: "" },
+    { id: "id_jkt", name: "Джакарта", hh: "135", habr: "", sj: "" }
+  ],
+  "philippines": [
+    { id: "ph_all", name: "Все Филиппины", hh: "202", habr: "", sj: "" },
+    { id: "ph_mnl", name: "Манила", hh: "202", habr: "", sj: "" }
   ]
 };

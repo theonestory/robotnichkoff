@@ -71,10 +71,10 @@ const DICT = {
     empty_favs: "No favorites yet",
     empty_history: "History is empty",
     empty_search: "Nothing found",
-    no_title: "No title",
-    no_company: "Company not specified",
-    salary_missing: "Salary: not specified",
-    salary_prefix: "Salary: ",
+    no_title: "Без названия", // Возвращено на русский для аутентичности контента
+    no_company: "Компания не указана", // Возвращено на русский
+    salary_missing: "ЗП: не указано", // Возвращено на русский
+    salary_prefix: "ЗП: ", // Возвращено на русский
     show_more: "Show more",
     settings_title: "Search Parameters",
     filter_country: "Country",
@@ -93,18 +93,23 @@ const DICT = {
 
 const LOCATIONS_EN: Record<string, string> = {
   "Везде": "Anywhere", "Россия и СНГ": "Russia & CIS", "СНГ": "CIS", "Европа": "Europe", "США": "USA",
+  "MENA": "MENA", "Азия": "Asia", "ОАЭ": "UAE", "Турция": "Turkey", "Саудовская Аравия": "Saudi Arabia", 
+  "Египет": "Egypt", "Израиль": "Israel", "Таиланд": "Thailand", "Индонезия": "Indonesia", 
+  "Филиппины": "Philippines", "Вьетнам": "Vietnam", "Индия": "India", "Китай": "China",
   "Россия": "Russia", "Беларусь": "Belarus", "Казахстан": "Kazakhstan", "Армения": "Armenia", 
   "Грузия": "Georgia", "Азербайджан": "Azerbaijan", "Кыргызстан": "Kyrgyzstan", "Молдова": "Moldova",
   "Таджикистан": "Tajikistan", "Туркменистан": "Turkmenistan", "Узбекистан": "Uzbekistan",
   "Германия": "Germany", "Великобритания": "UK", "Польша": "Poland", "Кипр": "Cyprus", 
   "Сербия": "Serbia", "Нидерланды": "Netherlands", "Франция": "France", "Испания": "Spain", "Италия": "Italy",
   "Все локации": "All locations", "Вся Россия и СНГ": "All Russia & CIS", "Все страны СНГ (без РФ)": "All CIS (except RU)",
-  "Все страны Европы": "All Europe", "Все США": "All USA", "Вся Россия": "All Russia", "Вся Беларусь": "All Belarus",
+  "Все страны Европы": "All Europe", "Все США": "All USA", "Все страны MENA": "All MENA", "Вся Азия": "All Asia",
+  "Вся Россия": "All Russia", "Вся Беларусь": "All Belarus",
   "Весь Казахстан": "All Kazakhstan", "Вся Армения": "All Armenia", "Вся Грузия": "All Georgia",
   "Весь Азербайджан": "All Azerbaijan", "Весь Кыргызстан": "All Kyrgyzstan", "Вся Молдова": "All Moldova",
   "Весь Таджикистан": "All Tajikistan", "Весь Туркменистан": "All Turkmenistan", "Весь Узбекистан": "All Uzbekistan",
   "Вся Германия": "All Germany", "Вся Великобритания": "All UK", "Вся Польша": "All Poland", "Весь Кипр": "All Cyprus",
   "Вся Сербия": "All Serbia", "Все Нидерланды": "All Netherlands", "Вся Франция": "All France", "Вся Испания": "All Spain",
+  "Все ОАЭ": "All UAE", "Вся Турция": "All Turkey", "Весь Таиланд": "All Thailand", "Вся Индонезия": "All Indonesia", "Все Филиппины": "All Philippines",
   "Москва": "Moscow", "Санкт-Петербург": "St. Petersburg", "Новосибирск": "Novosibirsk", "Екатеринбург": "Yekaterinburg",
   "Казань": "Kazan", "Нижний Новгород": "Nizhny Novgorod", "Челябинск": "Chelyabinsk", "Самара": "Samara",
   "Уфа": "Ufa", "Ростов-на-Дону": "Rostov-on-Don", "Краснодар": "Krasnodar", "Воронеж": "Voronezh", "Пермь": "Perm",
@@ -118,7 +123,9 @@ const LOCATIONS_EN: Record<string, string> = {
   "Варшава": "Warsaw", "Краков": "Krakow", "Лимассол": "Limassol", "Никосия": "Nicosia", "Белград": "Belgrade",
   "Нови-Сад": "Novi Sad", "Амстердам": "Amsterdam", "Роттердам": "Rotterdam", "Париж": "Paris",
   "Марсель": "Marseille", "Мадрид": "Madrid", "Барселона": "Barcelona", "Нью-Йорк": "New York",
-  "Сан-Франциско": "San Francisco", "Лос-Анджелес": "Los Angeles", "Сиэтл": "Seattle", "Чикаго": "Chicago"
+  "Сан-Франциско": "San Francisco", "Лос-Анджелес": "Los Angeles", "Сиэтл": "Seattle", "Чикаго": "Chicago",
+  "Дубай": "Dubai", "Абу-Даби": "Abu Dhabi", "Стамбул": "Istanbul", "Анталья": "Antalya", 
+  "Бангкок": "Bangkok", "Пхукет": "Phuket", "Бали": "Bali", "Джакарта": "Jakarta", "Манила": "Manila"
 };
 
 const FILTER_SITES = [
@@ -280,7 +287,7 @@ function ApplicationContent() {
   const [filterSite, setFilterSite] = useState("all");
   const [view, setView] = useState<"search" | "favorites" | "history">("search");
   
-  const [appVersion, setAppVersion] = useState("1.0.19");
+  const [appVersion, setAppVersion] = useState("1.0.21");
   const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string, notified: boolean}>({ show: false, version: "", notified: false });
 
   const [allVacancies, setAllVacancies] = useState<Vacancy[]>([]);
