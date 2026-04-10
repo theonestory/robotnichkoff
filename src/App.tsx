@@ -18,14 +18,120 @@ interface Vacancy {
   title: string; link: string; company: string; salary: string;
 }
 
+const DICT = {
+  ru: {
+    app_name: "Robotничкофф",
+    nav_search: "🔍 Поиск",
+    nav_favs: "❤️ Избранное",
+    nav_history: "🕒 Вы смотрели",
+    theme_light: "☀️ Светлая",
+    theme_dark: "🌙 Темная",
+    contact_author: "Связаться с автором",
+    loading_search: "Опрашиваем площадки...",
+    loading_bg: "Фоновая подгрузка...",
+    update_available: "🚀 Доступна версия",
+    update_btn: "ОБНОВИТЬ",
+    search_placeholder: "Название вакансии или должности",
+    new_vacancies: "Новые вакансии",
+    empty_favs: "Нет избранных",
+    empty_history: "История пуста",
+    empty_search: "Ничего не найдено",
+    no_title: "Без названия",
+    no_company: "Компания не указана",
+    salary_missing: "ЗП: не указано",
+    salary_prefix: "ЗП: ",
+    show_more: "Показать еще",
+    settings_title: "Параметры поиска",
+    filter_country: "Страна",
+    filter_city: "Город или Регион",
+    filter_format: "Формат работы",
+    filter_salary: "Вакансии и ЗП",
+    filter_lang: "Язык интерфейса",
+    btn_apply: "Применить фильтры",
+    btn_applied: "Применено",
+    version: "Версия",
+    push_title: "Срочно проверяй! 🚀",
+    push_body: "Найдено {count} новых вакансий.",
+    select_placeholder: "Выберите..."
+  },
+  en: {
+    app_name: "Robotnichkoff",
+    nav_search: "🔍 Search",
+    nav_favs: "❤️ Favorites",
+    nav_history: "🕒 History",
+    theme_light: "☀️ Light",
+    theme_dark: "🌙 Dark",
+    contact_author: "Contact Author",
+    loading_search: "Querying platforms...",
+    loading_bg: "Background loading...",
+    update_available: "🚀 Update available",
+    update_btn: "UPDATE",
+    search_placeholder: "Job title or keyword",
+    new_vacancies: "New vacancies",
+    empty_favs: "No favorites yet",
+    empty_history: "History is empty",
+    empty_search: "Nothing found",
+    no_title: "No title",
+    no_company: "Company not specified",
+    salary_missing: "Salary: not specified",
+    salary_prefix: "Salary: ",
+    show_more: "Show more",
+    settings_title: "Search Parameters",
+    filter_country: "Country",
+    filter_city: "City or Region",
+    filter_format: "Work Format",
+    filter_salary: "Vacancies & Salary",
+    filter_lang: "Interface Language",
+    btn_apply: "Apply Filters",
+    btn_applied: "Applied",
+    version: "Version",
+    push_title: "Check it out! 🚀",
+    push_body: "Found {count} new vacancies.",
+    select_placeholder: "Select..."
+  }
+};
+
+const LOCATIONS_EN: Record<string, string> = {
+  "Везде": "Anywhere", "Россия и СНГ": "Russia & CIS", "СНГ": "CIS", "Европа": "Europe", "США": "USA",
+  "Россия": "Russia", "Беларусь": "Belarus", "Казахстан": "Kazakhstan", "Армения": "Armenia", 
+  "Грузия": "Georgia", "Азербайджан": "Azerbaijan", "Кыргызстан": "Kyrgyzstan", "Молдова": "Moldova",
+  "Таджикистан": "Tajikistan", "Туркменистан": "Turkmenistan", "Узбекистан": "Uzbekistan",
+  "Германия": "Germany", "Великобритания": "UK", "Польша": "Poland", "Кипр": "Cyprus", 
+  "Сербия": "Serbia", "Нидерланды": "Netherlands", "Франция": "France", "Испания": "Spain", "Италия": "Italy",
+  "Все локации": "All locations", "Вся Россия и СНГ": "All Russia & CIS", "Все страны СНГ (без РФ)": "All CIS (except RU)",
+  "Все страны Европы": "All Europe", "Все США": "All USA", "Вся Россия": "All Russia", "Вся Беларусь": "All Belarus",
+  "Весь Казахстан": "All Kazakhstan", "Вся Армения": "All Armenia", "Вся Грузия": "All Georgia",
+  "Весь Азербайджан": "All Azerbaijan", "Весь Кыргызстан": "All Kyrgyzstan", "Вся Молдова": "All Moldova",
+  "Весь Таджикистан": "All Tajikistan", "Весь Туркменистан": "All Turkmenistan", "Весь Узбекистан": "All Uzbekistan",
+  "Вся Германия": "All Germany", "Вся Великобритания": "All UK", "Вся Польша": "All Poland", "Весь Кипр": "All Cyprus",
+  "Вся Сербия": "All Serbia", "Все Нидерланды": "All Netherlands", "Вся Франция": "All France", "Вся Испания": "All Spain",
+  "Москва": "Moscow", "Санкт-Петербург": "St. Petersburg", "Новосибирск": "Novosibirsk", "Екатеринбург": "Yekaterinburg",
+  "Казань": "Kazan", "Нижний Новгород": "Nizhny Novgorod", "Челябинск": "Chelyabinsk", "Самара": "Samara",
+  "Уфа": "Ufa", "Ростов-на-Дону": "Rostov-on-Don", "Краснодар": "Krasnodar", "Минск": "Minsk",
+  "Гомель": "Gomel", "Витебск": "Vitebsk", "Могилев": "Mogilev", "Гродно": "Grodno", "Брест": "Brest",
+  "Алматы": "Almaty", "Астана": "Astana", "Шымкент": "Shymkent", "Караганда": "Karaganda",
+  "Ереван": "Yerevan", "Гюмри": "Gyumri", "Тбилиси": "Tbilisi", "Батуми": "Batumi", "Баку": "Baku",
+  "Бишкек": "Bishkek", "Кишинев": "Chisinau", "Душанбе": "Dushanbe", "Ашхабад": "Ashgabat", "Ташкент": "Tashkent",
+  "Берлин": "Berlin", "Мюнхен": "Munich", "Франкфурт": "Frankfurt", "Лондон": "London", "Манчестер": "Manchester",
+  "Варшава": "Warsaw", "Краков": "Krakow", "Лимассол": "Limassol", "Никосия": "Nicosia", "Белград": "Belgrade",
+  "Нови-Сад": "Novi Sad", "Амстердам": "Amsterdam", "Роттердам": "Rotterdam", "Париж": "Paris",
+  "Марсель": "Marseille", "Мадрид": "Madrid", "Барселона": "Barcelona", "Нью-Йорк": "New York",
+  "Сан-Франциско": "San Francisco", "Лос-Анджелес": "Los Angeles", "Сиэтл": "Seattle", "Чикаго": "Chicago"
+};
+
 const FILTER_SITES = [
   { id: "all", label: "ВСЕ" }, { id: "hh", label: "HH.RU" }, { id: "habr", label: "HABR" }, { id: "superjob", label: "SUPERJOB" }, { id: "zarplata", label: "ZARPLATA" }
 ];
 
-const SALARY_FILTERS = [
-  { id: "all", name: "Все вакансии" },
-  { id: "with_salary", name: "Только с указанием ЗП" },
-  { id: "without_salary", name: "Только без указания ЗП" }
+const LANG_FILTERS = [
+  { id: "ru", name: "Русский язык (Всё приложение)" },
+  { id: "en", name: "English (vacancies in Russian)" }
+];
+
+const getSalaryFilters = (lang: "ru" | "en") => [
+  { id: "all", name: lang === "ru" ? "Все вакансии" : "All vacancies" },
+  { id: "with_salary", name: lang === "ru" ? "Только с указанием ЗП" : "Only with salary" },
+  { id: "without_salary", name: lang === "ru" ? "Только без указания ЗП" : "Only without salary" }
 ];
 
 const shuffleResults = (array: Vacancy[]) => {
@@ -72,9 +178,9 @@ const ServiceLogo = ({ link }: { link: string }) => {
   );
 };
 
-const CustomSelect = ({ label, options, selectedId, onSelect }: { label: string, options: any[], selectedId: string, onSelect: (id: string) => void }) => {
+const CustomSelect = ({ label, options, selectedId, onSelect, placeholder }: { label: string, options: any[], selectedId: string, onSelect: (id: string) => void, placeholder: string }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const selectedName = options.find(o => o.id === selectedId)?.name || "Выберите...";
+  const selectedName = options.find(o => o.id === selectedId)?.name || placeholder;
 
   return (
     <div className="w-full relative">
@@ -159,6 +265,9 @@ const fixLayoutTypo = (text: string): string => {
 };
 
 function ApplicationContent() {
+  const [activeLang, setActiveLang] = useState<"ru" | "en">((localStorage.getItem("jobSonar_lang") as "ru" | "en") || "ru");
+  const t = DICT[activeLang];
+
   const [favorites, setFavorites] = useState<Vacancy[]>([]);
   const [visitedVacancies, setVisitedVacancies] = useState<Vacancy[]>([]);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
@@ -169,7 +278,7 @@ function ApplicationContent() {
   const [filterSite, setFilterSite] = useState("all");
   const [view, setView] = useState<"search" | "favorites" | "history">("search");
   
-  const [appVersion, setAppVersion] = useState("1.0.17");
+  const [appVersion, setAppVersion] = useState("1.0.19");
   const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string, notified: boolean}>({ show: false, version: "", notified: false });
 
   const [allVacancies, setAllVacancies] = useState<Vacancy[]>([]);
@@ -194,6 +303,7 @@ function ApplicationContent() {
   const [draftCity, setDraftCity] = useState(activeCity);
   const [draftFormat, setDraftFormat] = useState(activeFormat);
   const [draftSalary, setDraftSalary] = useState(activeSalary);
+  const [draftLang, setDraftLang] = useState(activeLang);
 
   const scrollRef = useRef<HTMLElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -203,6 +313,26 @@ function ApplicationContent() {
 
   const filterRefs = useRef({ city: activeCity, format: activeFormat, country: activeCountry });
   
+  const localizedCountries = useMemo(() => COUNTRIES.map(c => ({
+    ...c,
+    name: activeLang === 'en' ? (LOCATIONS_EN[c.name] || c.name) : c.name
+  })), [activeLang]);
+
+  const localizedCities = useMemo(() => {
+    const cityList = CITIES[draftCountry] || CITIES["all"];
+    return cityList.map(c => ({
+      ...c,
+      name: activeLang === 'en' ? (LOCATIONS_EN[c.name] || c.name) : c.name
+    }));
+  }, [draftCountry, activeLang]);
+
+  const localizedWorkFormats = useMemo(() => WORK_FORMATS.map(f => {
+    if (f.id === 'any') return { ...f, name: activeLang === 'ru' ? 'Любой формат' : 'Any format' };
+    if (f.id === 'remote') return { ...f, name: activeLang === 'ru' ? 'Удаленная работа' : 'Remote' };
+    if (f.id === 'office') return { ...f, name: activeLang === 'ru' ? 'Офис / Гибрид' : 'Office / Hybrid' };
+    return f;
+  }), [activeLang]);
+
   useEffect(() => { allVacanciesRef.current = allVacancies; }, [allVacancies]);
   useEffect(() => { pendingVacanciesRef.current = pendingVacancies; }, [pendingVacancies]);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [filterSite, view]);
@@ -213,7 +343,9 @@ function ApplicationContent() {
     localStorage.setItem("jobSonar_city", activeCity);
     localStorage.setItem("jobSonar_format", activeFormat);
     localStorage.setItem("jobSonar_salary", activeSalary);
-  }, [activeCountry, activeCity, activeFormat, activeSalary]);
+    localStorage.setItem("jobSonar_lang", activeLang);
+    document.documentElement.lang = activeLang;
+  }, [activeCountry, activeCity, activeFormat, activeSalary, activeLang]);
 
   useEffect(() => {
     invoke("update_badge", { count: pendingVacancies.length }).catch(() => {});
@@ -249,7 +381,7 @@ function ApplicationContent() {
         try {
           const parsed = JSON.parse(savedVisited);
           if (Array.isArray(parsed)) {
-            const cleaned = parsed.map(item => typeof item === 'string' ? { title: "Просмотренная вакансия", link: item, company: "", salary: "" } : item)
+            const cleaned = parsed.map(item => typeof item === 'string' ? { title: "viewed", link: item, company: "", salary: "" } : item)
               .filter(v => v.link && !v.link.toLowerCase().includes("github.com") && !v.link.toLowerCase().includes("linkedin.com"));
             setVisitedVacancies(cleaned);
           }
@@ -274,7 +406,6 @@ function ApplicationContent() {
         if (latest && latest !== current) {
           setUpdateInfo(prev => {
             if (prev.version === latest) return prev;
-            sendNotification({ title: 'Выкатили обнову! 🚀', body: 'Срочно идем обновлять, ссылка внутри приложения' });
             return { show: true, version: latest, notified: true };
           });
         }
@@ -334,13 +465,13 @@ function ApplicationContent() {
 
         setPendingVacancies(prev => {
            const updatedPending = [...newItems, ...prev];
-           sendNotification({ title: 'Срочно проверяй! 🚀', body: `Найдено ${updatedPending.length} новых вакансий.` });
+           sendNotification({ title: t.push_title, body: t.push_body.replace("{count}", updatedPending.length.toString()) });
            return updatedPending;
         });
       }
     }, 180000); 
     return () => clearInterval(intervalId);
-  }, [activeSearch, view]);
+  }, [activeSearch, view, t]);
 
   const handleSearch = async (forcedQuery?: string) => {
     let query = typeof forcedQuery === 'string' ? forcedQuery : (searchQuery || "").trim();
@@ -439,13 +570,13 @@ function ApplicationContent() {
     setDraftCity(activeCity);
     setDraftFormat(activeFormat);
     setDraftSalary(activeSalary);
+    setDraftLang(activeLang);
     setIsFiltersOpen(true);
   };
 
   const handleSaveFilters = () => {
     setIsSavingFilters(true);
     
-    // Проверяем, изменились ли параметры API (страна, город, формат)
     const isApiFilterChanged = draftCountry !== activeCountry || draftCity !== activeCity || draftFormat !== activeFormat;
     
     filterRefs.current = { city: draftCity, format: draftFormat, country: draftCountry };
@@ -455,19 +586,19 @@ function ApplicationContent() {
       setActiveCity(draftCity);
       setActiveFormat(draftFormat);
       setActiveSalary(draftSalary);
+      setActiveLang(draftLang);
       setIsSavingFilters(false);
       setIsSavedSuccess(true);
       
-      // Делаем новый поиск ТОЛЬКО если поменялась страна, город или формат.
-      // Если поменялся только фильтр ЗП — просто мгновенно обновится список благодаря useMemo
       if (isApiFilterChanged && hasSearched && activeSearch) {
         handleSearch(activeSearch);
       }
 
+      // Окно больше не закрывается автоматически! Пользователь закроет его крестиком.
+      // Сбрасываем только зеленую галочку на кнопке через 1.5 секунды
       setTimeout(() => {
         setIsSavedSuccess(false);
-        setIsFiltersOpen(false);
-      }, 800);
+      }, 1500);
     }, 600);
   };
 
@@ -485,7 +616,6 @@ function ApplicationContent() {
         if (!isJobMatch(v.title, activeSearch, v.link)) return false;
       }
       
-      // ЛОГИКА ФИЛЬТРАЦИИ ЗАРПЛАТЫ
       const isSalaryMissing = (v?.salary || "").toLowerCase().includes("не указана") || (v?.salary || "") === "";
       if (activeSalary === "with_salary" && isSalaryMissing) return false;
       if (activeSalary === "without_salary" && !isSalaryMissing) return false;
@@ -497,7 +627,7 @@ function ApplicationContent() {
   const displayedList = filteredList.slice(0, displayCount);
   const currentFilterIndex = FILTER_SITES.findIndex(s => s.id === filterSite);
 
-  const hasDraftChanges = draftCountry !== activeCountry || draftCity !== activeCity || draftFormat !== activeFormat || draftSalary !== activeSalary;
+  const hasDraftChanges = draftCountry !== activeCountry || draftCity !== activeCity || draftFormat !== activeFormat || draftSalary !== activeSalary || draftLang !== activeLang;
   const isFilterActiveGlobally = activeCountry !== "all" || activeCity !== "all_any" || activeFormat !== "any" || activeSalary !== "all";
   
   const isSearchCompleted = hasSearched && !isLoading && !isFetchingBackground && activeSearch === searchQuery && searchQuery.trim() !== "";
@@ -516,21 +646,21 @@ function ApplicationContent() {
       <audio ref={audioRef} src={notiSound} preload="auto" />
       
       <aside className="w-64 border-r flex flex-col p-6 shrink-0 z-20 transition-all shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
-        <h1 className="text-2xl font-black italic tracking-tighter mb-10 px-2 transition-colors" style={{ color: theme === 'light' ? '#3F3F46' : '#FFFFFF' }}>Robotничкофф</h1>
+        <h1 className="text-2xl font-black italic tracking-tighter mb-10 px-2 transition-colors" style={{ color: theme === 'light' ? '#3F3F46' : '#FFFFFF' }}>{t.app_name}</h1>
         
         <nav className="space-y-3 flex-1">
           <button 
             onClick={() => { setView("search"); setFilterSite("all"); }} 
             className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold transition-all outline-none ${view === "search" ? 'bg-[#3F3F46] text-white shadow-lg' : 'text-[var(--text-dim)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10'}`}
           >
-            🔍 Поиск
+            {t.nav_search}
           </button>
           
           <button 
             onClick={() => { setView("favorites"); setFilterSite("all"); }} 
             className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-between transition-all outline-none ${view === "favorites" ? 'bg-[#3F3F46] text-white shadow-lg' : 'text-[var(--text-dim)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10'}`}
           >
-            <span>❤️ Избранное</span>
+            <span>{t.nav_favs}</span>
             {favorites.length > 0 && <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ml-2 transition-colors ${view === "favorites" ? "bg-white text-[#3F3F46]" : "bg-[var(--text-dim)] text-white"}`}>{favorites.length}</span>}
           </button>
           
@@ -538,7 +668,7 @@ function ApplicationContent() {
             onClick={() => { setView("history"); setFilterSite("all"); }} 
             className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-between transition-all outline-none ${view === "history" ? 'bg-[#3F3F46] text-white shadow-lg' : 'text-[var(--text-dim)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10'}`}
           >
-            <span>🕒 Вы смотрели</span>
+            <span>{t.nav_history}</span>
             {visitedVacancies.length > 0 && <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ml-2 transition-colors ${view === "history" ? "bg-white text-[#3F3F46]" : "bg-[var(--text-dim)] text-white"}`}>{visitedVacancies.length}</span>}
           </button>
         </nav>
@@ -546,8 +676,8 @@ function ApplicationContent() {
         <div className="theme-toggle-container pt-4">
           <div className="theme-toggle-switch" data-theme={theme} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
             <div className="theme-toggle-pill" />
-            <div className={`theme-label ${theme === 'light' ? 'active' : ''}`}>☀️ Светлая</div>
-            <div className={`theme-label ${theme === 'dark' ? 'active' : ''}`}>🌙 Темная</div>
+            <div className={`theme-label ${theme === 'light' ? 'active' : ''}`}>{t.theme_light}</div>
+            <div className={`theme-label ${theme === 'dark' ? 'active' : ''}`}>{t.theme_dark}</div>
           </div>
         </div>
 
@@ -555,7 +685,7 @@ function ApplicationContent() {
           onClick={() => invoke("open_browser", { url: "https://www.linkedin.com/in/andreevav/" })} 
           className="author-credit"
         >
-          Связаться с автором
+          {t.contact_author}
         </div>
       </aside>
 
@@ -565,15 +695,15 @@ function ApplicationContent() {
           <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-[90] pointer-events-none">
             <div className="px-6 py-3.5 rounded-full flex items-center gap-4 shadow-2xl border pointer-events-auto transition-colors" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
               <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3F3F46] opacity-50"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-[#3F3F46]"></span></span>
-              <span className="text-xs font-black tracking-widest uppercase" style={{ color: 'var(--text-main)' }}>{isLoading ? "Опрашиваем площадки..." : "Фоновая подгрузка..."}</span>
+              <span className="text-xs font-black tracking-widest uppercase" style={{ color: 'var(--text-main)' }}>{isLoading ? t.loading_search : t.loading_bg}</span>
             </div>
           </div>
         )}
 
         {updateInfo.show && (
           <div className="bg-[#3F3F46] text-white px-10 py-3 flex justify-between items-center shadow-lg z-30">
-            <span className="text-sm font-black uppercase">🚀 Доступна версия v{updateInfo.version}</span>
-            <button onClick={() => invoke("open_browser", { url: "https://github.com/theonestory/robotnichkoff/releases/latest" })} className="bg-white text-[#3F3F46] px-6 py-1.5 rounded-xl text-xs font-black shadow-md">ОБНОВИТЬ</button>
+            <span className="text-sm font-black uppercase">{t.update_available} v{updateInfo.version}</span>
+            <button onClick={() => invoke("open_browser", { url: "https://github.com/theonestory/robotnichkoff/releases/latest" })} className="bg-white text-[#3F3F46] px-6 py-1.5 rounded-xl text-xs font-black shadow-md">{t.update_btn}</button>
           </div>
         )}
         
@@ -589,7 +719,7 @@ function ApplicationContent() {
                   onKeyDown={handleKeyDown} 
                   className="w-full px-6 py-3.5 pr-14 rounded-2xl text-sm font-bold outline-none transition-colors shadow-inner" 
                   style={{ backgroundColor: 'var(--input-bg)' }} 
-                  placeholder="Название вакансии или должности" 
+                  placeholder={t.search_placeholder} 
                 />
                 
                 <div className="absolute right-2 flex items-center">
@@ -632,7 +762,7 @@ function ApplicationContent() {
             
             <div className="ios-slider-container max-w-4xl mt-1">
               <div className="ios-slider-pill" style={{ left: `calc(${currentFilterIndex} * 20% + 4px)`, width: 'calc(20% - 8px)' }} />
-              {FILTER_SITES.map(s => <div key={s.id} onClick={() => setFilterSite(s.id)} className="ios-slider-item" style={{ color: filterSite === s.id ? 'var(--text-main)' : 'var(--text-dim)' }}>{s.label}</div>)}
+              {FILTER_SITES.map(s => <div key={s.id} onClick={() => setFilterSite(s.id)} className="ios-slider-item" style={{ color: filterSite === s.id ? 'var(--text-main)' : 'var(--text-dim)' }}>{s.id === "all" ? (activeLang === "ru" ? "ВСЕ" : "ALL") : s.label}</div>)}
             </div>
           </div>
         </header>
@@ -652,14 +782,14 @@ function ApplicationContent() {
                 className="absolute top-2 bg-[#10B981] text-white px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest shadow-[0_8px_30px_rgba(16,185,129,0.3)] hover:scale-105 transition-transform flex items-center gap-2 animate-bounce pointer-events-auto"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
-                Новые вакансии ({pendingVacancies.length})
+                {t.new_vacancies} ({pendingVacancies.length})
               </button>
             </div>
           )}
 
           {(view === "search" && hasSearched && filteredList.length === 0) || (view !== "search" && filteredList.length === 0) ? (
             <div className="h-full flex flex-col items-center justify-center opacity-20">
-              <p className="text-[12px] font-black uppercase tracking-[0.2em] text-center">{view === "favorites" ? "Нет избранных" : view === "history" ? "История пуста" : "Ничего не найдено"}</p>
+              <p className="text-[12px] font-black uppercase tracking-[0.2em] text-center">{view === "favorites" ? t.empty_favs : view === "history" ? t.empty_history : t.empty_search}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-5 max-w-5xl mx-auto pb-10">
@@ -675,9 +805,9 @@ function ApplicationContent() {
                     <div className="flex items-center flex-1 min-w-0">
                       <div className="service-logo-container"><ServiceLogo link={v?.link || ""} /></div>
                       <div className="text-stack flex-1 min-w-0">
-                        <h3 className="vacancy-title truncate">{v?.title || "Без названия"}</h3>
-                        <p className="company-name text-xs font-medium mt-1 truncate" style={{ color: 'var(--text-dim)' }}>{v?.company || "Компания не указана"}</p>
-                        <p className="salary-line text-xs font-bold mt-1 truncate" style={{ color: isSalaryMissing ? '#EF4444' : '#10B981' }}>{isSalaryMissing ? "ЗП: не указано" : `ЗП: ${v?.salary || ""}`}</p>
+                        <h3 className="vacancy-title truncate">{v?.title || t.no_title}</h3>
+                        <p className="company-name text-xs font-medium mt-1 truncate" style={{ color: 'var(--text-dim)' }}>{v?.company || t.no_company}</p>
+                        <p className="salary-line text-xs font-bold mt-1 truncate" style={{ color: isSalaryMissing ? '#EF4444' : '#10B981' }}>{isSalaryMissing ? t.salary_missing : `${t.salary_prefix}${v?.salary || ""}`}</p>
                       </div>
                     </div>
                     <div className="actions-area flex items-center gap-3 ml-6 shrink-0">
@@ -691,7 +821,7 @@ function ApplicationContent() {
 
               {filteredList.length > displayCount && !isLoading && (
                   <div className="flex justify-center mt-8 pb-12">
-                      <button onClick={handleShowMore} className="text-[10px] font-black uppercase tracking-[0.2em] transition-all opacity-60 hover:opacity-100 active:scale-95 outline-none" style={{ color: 'var(--text-dim)' }}>Показать еще</button>
+                      <button onClick={handleShowMore} className="text-[10px] font-black uppercase tracking-[0.2em] transition-all opacity-60 hover:opacity-100 active:scale-95 outline-none" style={{ color: 'var(--text-dim)' }}>{t.show_more}</button>
                   </div>
               )}
             </div>
@@ -699,46 +829,56 @@ function ApplicationContent() {
         </section>
       </main>
 
-      {/* ПОЛНОЭКРАННОЕ ОКНО НАСТРОЕК */}
       <div className={`fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-300 ease-in-out ${isFiltersOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} style={{ backgroundColor: 'var(--bg-app)' }}>
         <button onClick={() => setIsFiltersOpen(false)} className="absolute top-8 right-10 p-3 rounded-2xl opacity-40 hover:opacity-100 transition-all hover:scale-105 active:scale-95 outline-none" style={{ backgroundColor: 'var(--bg-side)', color: 'var(--text-main)' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
 
         <div className="flex flex-col items-center w-full max-w-sm gap-8 px-6">
-          <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-main)' }}>Параметры поиска</h2>
+          <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-main)' }}>{t.settings_title}</h2>
           
           <div className="w-full flex flex-col gap-5">
             <CustomSelect 
-              label="Страна" 
-              options={COUNTRIES} 
+              label={t.filter_country} 
+              options={localizedCountries} 
               selectedId={draftCountry} 
               onSelect={(id) => { 
                 setDraftCountry(id); 
                 setDraftCity(CITIES[id]?.[0]?.id || "all_any"); 
               }} 
+              placeholder={t.select_placeholder}
             />
             
             <CustomSelect 
-              label="Город или Регион" 
-              options={CITIES[draftCountry] || CITIES["all"]} 
+              label={t.filter_city} 
+              options={localizedCities} 
               selectedId={draftCity} 
               onSelect={setDraftCity} 
+              placeholder={t.select_placeholder}
             />
 
             <CustomSelect 
-              label="Формат работы" 
-              options={WORK_FORMATS} 
+              label={t.filter_format} 
+              options={localizedWorkFormats} 
               selectedId={draftFormat} 
               onSelect={setDraftFormat} 
+              placeholder={t.select_placeholder}
             />
 
-            {/* НОВЫЙ ФИЛЬТР ЗАРПЛАТЫ */}
             <CustomSelect 
-              label="Вакансии и ЗП" 
-              options={SALARY_FILTERS} 
+              label={t.filter_salary} 
+              options={getSalaryFilters(activeLang)} 
               selectedId={draftSalary} 
               onSelect={setDraftSalary} 
+              placeholder={t.select_placeholder}
+            />
+
+            <CustomSelect 
+              label={t.filter_lang} 
+              options={LANG_FILTERS} 
+              selectedId={draftLang} 
+              onSelect={(id) => setDraftLang(id as "ru" | "en")} 
+              placeholder={t.select_placeholder}
             />
           </div>
 
@@ -761,10 +901,10 @@ function ApplicationContent() {
             ) : isSavedSuccess ? (
               <>
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                Применено
+                {t.btn_applied}
               </>
             ) : (
-              "Применить фильтры"
+              t.btn_apply
             )}
           </button>
         </div>
@@ -772,7 +912,7 @@ function ApplicationContent() {
         <div className="absolute bottom-8 right-10 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.15em] opacity-30 hover:opacity-100 transition-opacity" style={{ color: 'var(--text-main)' }}>
           <button onClick={() => invoke("open_browser", { url: "https://github.com/theonestory/robotnichkoff" })} className="hover:underline outline-none transition-colors">GitHub</button>
           <span style={{ color: 'var(--text-dim)' }}>|</span>
-          <span>Версия {appVersion}</span>
+          <span>{t.version} {appVersion}</span>
         </div>
       </div>
     </div>
