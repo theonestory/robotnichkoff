@@ -12,7 +12,7 @@ import hhLogo from "./assets/logos/hh.svg";
 import habrLogo from "./assets/logos/habr.svg";
 import sjLogo from "./assets/logos/superjob.svg";
 import zarplataLogo from "./assets/logos/zarplata.svg";
-import notiSound from "./assets/noti-robo.wav"; // ИМПОРТ ЗВУКА
+import notiSound from "./assets/noti-robo.wav";
 
 interface Vacancy {
   title: string; link: string; company: string; salary: string;
@@ -20,6 +20,12 @@ interface Vacancy {
 
 const FILTER_SITES = [
   { id: "all", label: "ВСЕ" }, { id: "hh", label: "HH.RU" }, { id: "habr", label: "HABR" }, { id: "superjob", label: "SUPERJOB" }, { id: "zarplata", label: "ZARPLATA" }
+];
+
+const SALARY_FILTERS = [
+  { id: "all", name: "Все вакансии" },
+  { id: "with_salary", name: "Только с указанием ЗП" },
+  { id: "without_salary", name: "Только без указания ЗП" }
 ];
 
 const shuffleResults = (array: Vacancy[]) => {
@@ -105,9 +111,6 @@ const CustomSelect = ({ label, options, selectedId, onSelect }: { label: string,
   );
 };
 
-// ==========================================
-// УМНАЯ АВТО-РАСКЛАДКА (EN <-> RU)
-// ==========================================
 const fixLayoutTypo = (text: string): string => {
   if (!text) return text;
   
@@ -181,6 +184,7 @@ function ApplicationContent() {
   const [activeCountry, setActiveCountry] = useState(localStorage.getItem("jobSonar_country") || "all");
   const [activeCity, setActiveCity] = useState(localStorage.getItem("jobSonar_city") || "all_any");
   const [activeFormat, setActiveFormat] = useState(localStorage.getItem("jobSonar_format") || "any");
+  const [activeSalary, setActiveSalary] = useState(localStorage.getItem("jobSonar_salary") || "all");
 
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isSavingFilters, setIsSavingFilters] = useState(false);
@@ -189,8 +193,10 @@ function ApplicationContent() {
   const [draftCountry, setDraftCountry] = useState(activeCountry);
   const [draftCity, setDraftCity] = useState(activeCity);
   const [draftFormat, setDraftFormat] = useState(activeFormat);
+  const [draftSalary, setDraftSalary] = useState(activeSalary);
 
   const scrollRef = useRef<HTMLElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const allVacanciesRef = useRef(allVacancies);
   const pendingVacanciesRef = useRef(pendingVacancies);
   const { trackEvent } = useAptabase();
@@ -206,7 +212,8 @@ function ApplicationContent() {
     localStorage.setItem("jobSonar_country", activeCountry);
     localStorage.setItem("jobSonar_city", activeCity);
     localStorage.setItem("jobSonar_format", activeFormat);
-  }, [activeCountry, activeCity, activeFormat]);
+    localStorage.setItem("jobSonar_salary", activeSalary);
+  }, [activeCountry, activeCity, activeFormat, activeSalary]);
 
   useEffect(() => {
     invoke("update_badge", { count: pendingVacancies.length }).catch(() => {});
@@ -233,6 +240,8 @@ function ApplicationContent() {
     const initApp = async () => {
       let permission = await isPermissionGranted();
       if (!permission) permission = await requestPermission() === 'granted';
+
+      trackEvent("app_opened", { version: appVersion });
 
       invoke<Vacancy[]>("load_favorites").then(res => { if (Array.isArray(res)) setFavorites(res); }).catch(() => setFavorites([]));
       const savedVisited = localStorage.getItem("jobSonar_visited");
@@ -317,10 +326,11 @@ function ApplicationContent() {
       }
 
       if (foundNew && newItems.length > 0) {
-        // ВОСПРОИЗВЕДЕНИЕ ЗВУКА
-        const audio = new Audio(notiSound);
-        audio.volume = 0.5; // комфортная громкость 50%
-        audio.play().catch(e => console.log("Sound play error:", e));
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.volume = 0.5;
+          audioRef.current.play().catch(e => console.log("Sound play error:", e));
+        }
 
         setPendingVacancies(prev => {
            const updatedPending = [...newItems, ...prev];
@@ -335,6 +345,17 @@ function ApplicationContent() {
   const handleSearch = async (forcedQuery?: string) => {
     let query = typeof forcedQuery === 'string' ? forcedQuery : (searchQuery || "").trim();
     if (!query) return;
+
+    if (audioRef.current) {
+      audioRef.current.muted = true;
+      audioRef.current.play().then(() => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+          audioRef.current.muted = false;
+        }
+      }).catch(() => {});
+    }
 
     const correctedQuery = fixLayoutTypo(query);
     if (correctedQuery !== query) {
@@ -417,11 +438,15 @@ function ApplicationContent() {
     setDraftCountry(activeCountry);
     setDraftCity(activeCity);
     setDraftFormat(activeFormat);
+    setDraftSalary(activeSalary);
     setIsFiltersOpen(true);
   };
 
   const handleSaveFilters = () => {
     setIsSavingFilters(true);
+    
+    // Проверяем, изменились ли параметры API (страна, город, формат)
+    const isApiFilterChanged = draftCountry !== activeCountry || draftCity !== activeCity || draftFormat !== activeFormat;
     
     filterRefs.current = { city: draftCity, format: draftFormat, country: draftCountry };
 
@@ -429,10 +454,13 @@ function ApplicationContent() {
       setActiveCountry(draftCountry);
       setActiveCity(draftCity);
       setActiveFormat(draftFormat);
+      setActiveSalary(draftSalary);
       setIsSavingFilters(false);
       setIsSavedSuccess(true);
       
-      if (hasSearched && activeSearch) {
+      // Делаем новый поиск ТОЛЬКО если поменялась страна, город или формат.
+      // Если поменялся только фильтр ЗП — просто мгновенно обновится список благодаря useMemo
+      if (isApiFilterChanged && hasSearched && activeSearch) {
         handleSearch(activeSearch);
       }
 
@@ -456,15 +484,21 @@ function ApplicationContent() {
       if (view !== "search" && activeSearch) {
         if (!isJobMatch(v.title, activeSearch, v.link)) return false;
       }
+      
+      // ЛОГИКА ФИЛЬТРАЦИИ ЗАРПЛАТЫ
+      const isSalaryMissing = (v?.salary || "").toLowerCase().includes("не указана") || (v?.salary || "") === "";
+      if (activeSalary === "with_salary" && isSalaryMissing) return false;
+      if (activeSalary === "without_salary" && !isSalaryMissing) return false;
+
       return true;
     });
-  }, [allVacancies, favorites, visitedVacancies, filterSite, view, activeSearch]);
+  }, [allVacancies, favorites, visitedVacancies, filterSite, view, activeSearch, activeSalary]);
 
   const displayedList = filteredList.slice(0, displayCount);
   const currentFilterIndex = FILTER_SITES.findIndex(s => s.id === filterSite);
 
-  const hasDraftChanges = draftCountry !== activeCountry || draftCity !== activeCity || draftFormat !== activeFormat;
-  const isFilterActiveGlobally = activeCountry !== "all" || activeCity !== "all_any" || activeFormat !== "any";
+  const hasDraftChanges = draftCountry !== activeCountry || draftCity !== activeCity || draftFormat !== activeFormat || draftSalary !== activeSalary;
+  const isFilterActiveGlobally = activeCountry !== "all" || activeCity !== "all_any" || activeFormat !== "any" || activeSalary !== "all";
   
   const isSearchCompleted = hasSearched && !isLoading && !isFetchingBackground && activeSearch === searchQuery && searchQuery.trim() !== "";
 
@@ -479,6 +513,7 @@ function ApplicationContent() {
 
   return (
     <div className="flex h-screen w-screen font-sans overflow-hidden transition-colors duration-300 relative">
+      <audio ref={audioRef} src={notiSound} preload="auto" />
       
       <aside className="w-64 border-r flex flex-col p-6 shrink-0 z-20 transition-all shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
         <h1 className="text-2xl font-black italic tracking-tighter mb-10 px-2 transition-colors" style={{ color: theme === 'light' ? '#3F3F46' : '#FFFFFF' }}>Robotничкофф</h1>
@@ -696,6 +731,14 @@ function ApplicationContent() {
               options={WORK_FORMATS} 
               selectedId={draftFormat} 
               onSelect={setDraftFormat} 
+            />
+
+            {/* НОВЫЙ ФИЛЬТР ЗАРПЛАТЫ */}
+            <CustomSelect 
+              label="Вакансии и ЗП" 
+              options={SALARY_FILTERS} 
+              selectedId={draftSalary} 
+              onSelect={setDraftSalary} 
             />
           </div>
 

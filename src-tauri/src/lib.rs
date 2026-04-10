@@ -76,14 +76,18 @@ async fn search_jobs(
                 for s_node in element.select(&salary_selector) {
                     let txt = s_node.text().collect::<Vec<_>>().join(" ").split_whitespace().collect::<Vec<_>>().join(" ");
                     let t = txt.to_lowercase();
-                    if t.contains('₽') || t.contains("руб") || t.contains('$') || t.contains('€') { salary = txt; break; }
+                    // === ВОТ ЗДЕСЬ МЫ ЗАЩИЩАЕМСЯ ОТ "ТРУБНОЙ" ===
+                    // Проверяем, есть ли хотя бы одна цифра в строке
+                    if (t.contains('₽') || t.contains("руб") || t.contains('$') || t.contains('€')) && t.chars().any(|c| c.is_ascii_digit()) { 
+                        salary = txt; break; 
+                    }
                 }
 
                 if salary.is_empty() {
                     let mut poss: Vec<String> = element.select(&Selector::parse("span, div").unwrap()).filter_map(|s| {
                         let n = s.text().collect::<Vec<_>>().join(" ").split_whitespace().collect::<Vec<_>>().join(" ");
                         let t = n.to_lowercase();
-                        if (t.contains('₽') || t.contains("руб") || t.contains('$') || t.contains('€')) && n.len() > 3 && n.len() < 150 && !t.contains("требования") && !t.contains("обязанности") { Some(n) } else { None }
+                        if (t.contains('₽') || t.contains("руб") || t.contains('$') || t.contains('€')) && t.chars().any(|c| c.is_ascii_digit()) && n.len() > 3 && n.len() < 150 && !t.contains("требования") && !t.contains("обязанности") { Some(n) } else { None }
                     }).collect();
                     if !poss.is_empty() { poss.sort_by_key(|a| a.len()); salary = poss.into_iter().next().unwrap(); } 
                     else { salary = "ЗП: не указана".to_string(); }
@@ -161,7 +165,7 @@ fn load_favorites() -> Result<Vec<Vacancy>, String> {
 }
 
 #[tauri::command]
-#[allow(unused_variables)] // Подавляем варнинги компилятора на Windows
+#[allow(unused_variables)]
 fn update_badge(_count: i64, _app: tauri::AppHandle) {
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     if let Some(window) = _app.get_webview_window("main") {
@@ -215,9 +219,6 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|app_handle, event| match event {
-            // МАКРОС ТЕПЕРЬ СТОИТ ЗДЕСЬ. 
-            // На Windows этот блок вообще не будет компилироваться, 
-            // а на macOS он отработает идеально.
             #[cfg(target_os = "macos")]
             tauri::RunEvent::Reopen { .. } => {
                 if let Some(window) = app_handle.get_webview_window("main") {
