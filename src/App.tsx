@@ -12,6 +12,7 @@ import hhLogo from "./assets/logos/hh.svg";
 import habrLogo from "./assets/logos/habr.svg";
 import sjLogo from "./assets/logos/superjob.svg";
 import zarplataLogo from "./assets/logos/zarplata.svg";
+import notiSound from "./assets/noti-robo.wav"; // ИМПОРТ ЗВУКА
 
 interface Vacancy {
   title: string; link: string; company: string; salary: string;
@@ -104,6 +105,56 @@ const CustomSelect = ({ label, options, selectedId, onSelect }: { label: string,
   );
 };
 
+// ==========================================
+// УМНАЯ АВТО-РАСКЛАДКА (EN <-> RU)
+// ==========================================
+const fixLayoutTypo = (text: string): string => {
+  if (!text) return text;
+  
+  const EN_TO_RU: Record<string, string> = {
+    'q':'й', 'w':'ц', 'e':'у', 'r':'к', 't':'е', 'y':'н', 'u':'г', 'i':'ш', 'o':'щ', 'p':'з', '[':'х', ']':'ъ',
+    'a':'ф', 's':'ы', 'd':'в', 'f':'а', 'g':'п', 'h':'р', 'j':'о', 'k':'л', 'l':'д', ';':'ж', "'":'э',
+    'z':'я', 'x':'ч', 'c':'с', 'v':'м', 'b':'и', 'n':'т', 'm':'ь', ',':'б', '.':'ю', '`':'ё'
+  };
+  const RU_TO_EN: Record<string, string> = {};
+  for (const [en, ru] of Object.entries(EN_TO_RU)) { RU_TO_EN[ru] = en; }
+
+  const isPureEn = /^[a-zA-Z0-9\`\[\]\\;',.\s\-]+$/.test(text);
+  const isPureRu = /^[а-яА-ЯёЁ0-9\s\-]+$/.test(text);
+
+  if (isPureEn) {
+    let ruTranslated = "";
+    for(let i=0; i<text.length; i++) {
+      const char = text[i];
+      const lower = char.toLowerCase();
+      const translated = EN_TO_RU[lower] || char;
+      ruTranslated += char === lower ? translated : translated.toUpperCase();
+    }
+    const ruRoots = ['менедж', 'разработ', 'аналит', 'програм', 'дизайн', 'тестиров', 'инжен', 'администр', 'руковод', 'директ', 'специал', 'бухгалтер', 'оператор', 'ассистент', 'продукт', 'проект', 'систем', 'маркет', 'продаж', 'кадр', 'юрист', 'врач', 'учител', 'курьер', 'водител', 'стажер', 'данн', 'баз', 'сеть', 'сетев', 'безопасн', 'партн'];
+    
+    if (ruRoots.some(root => ruTranslated.toLowerCase().includes(root)) || /[a-zA-Z][;\[\]',][a-zA-Z]/.test(text)) {
+      return ruTranslated;
+    }
+  }
+
+  if (isPureRu) {
+    let enTranslated = "";
+    for(let i=0; i<text.length; i++) {
+      const char = text[i];
+      const lower = char.toLowerCase();
+      const translated = RU_TO_EN[lower] || char;
+      enTranslated += char === lower ? translated : translated.toUpperCase();
+    }
+    const enRoots = ['front', 'back', 'full', 'java', 'python', 'react', 'node', 'andr', 'ios', 'data', 'manag', 'design', 'test', 'admin', 'lead', 'head', 'chief', 'sale', 'mark', 'dev', 'ops', 'sec', 'game', 'web', 'app', 'soft', 'net', 'sql', 'php', 'ruby', 'golang', 'rust', 'c++'];
+    
+    if (enRoots.some(root => enTranslated.toLowerCase().includes(root))) {
+      return enTranslated;
+    }
+  }
+
+  return text;
+};
+
 function ApplicationContent() {
   const [favorites, setFavorites] = useState<Vacancy[]>([]);
   const [visitedVacancies, setVisitedVacancies] = useState<Vacancy[]>([]);
@@ -115,7 +166,7 @@ function ApplicationContent() {
   const [filterSite, setFilterSite] = useState("all");
   const [view, setView] = useState<"search" | "favorites" | "history">("search");
   
-  const [appVersion, setAppVersion] = useState("1.0.14");
+  const [appVersion, setAppVersion] = useState("1.0.17");
   const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string, notified: boolean}>({ show: false, version: "", notified: false });
 
   const [allVacancies, setAllVacancies] = useState<Vacancy[]>([]);
@@ -135,7 +186,6 @@ function ApplicationContent() {
   const [isSavingFilters, setIsSavingFilters] = useState(false);
   const [isSavedSuccess, setIsSavedSuccess] = useState(false);
 
-  // ВЕРНУЛИ ЭТИ ПЕРЕМЕННЫЕ
   const [draftCountry, setDraftCountry] = useState(activeCountry);
   const [draftCity, setDraftCity] = useState(activeCity);
   const [draftFormat, setDraftFormat] = useState(activeFormat);
@@ -158,7 +208,6 @@ function ApplicationContent() {
     localStorage.setItem("jobSonar_format", activeFormat);
   }, [activeCountry, activeCity, activeFormat]);
 
-  // Триггер обновления бейджа (кружочка в Dock)
   useEffect(() => {
     invoke("update_badge", { count: pendingVacancies.length }).catch(() => {});
   }, [pendingVacancies.length]);
@@ -268,6 +317,11 @@ function ApplicationContent() {
       }
 
       if (foundNew && newItems.length > 0) {
+        // ВОСПРОИЗВЕДЕНИЕ ЗВУКА
+        const audio = new Audio(notiSound);
+        audio.volume = 0.5; // комфортная громкость 50%
+        audio.play().catch(e => console.log("Sound play error:", e));
+
         setPendingVacancies(prev => {
            const updatedPending = [...newItems, ...prev];
            sendNotification({ title: 'Срочно проверяй! 🚀', body: `Найдено ${updatedPending.length} новых вакансий.` });
@@ -278,11 +332,19 @@ function ApplicationContent() {
     return () => clearInterval(intervalId);
   }, [activeSearch, view]);
 
-  const handleSearch = async () => {
-    const query = (searchQuery || "").trim();
-    if (!query || isLoading || isFetchingBackground) return;
+  const handleSearch = async (forcedQuery?: string) => {
+    let query = typeof forcedQuery === 'string' ? forcedQuery : (searchQuery || "").trim();
+    if (!query) return;
+
+    const correctedQuery = fixLayoutTypo(query);
+    if (correctedQuery !== query) {
+        query = correctedQuery;
+        setSearchQuery(correctedQuery);
+    }
     
-    setActiveSearch(query); setHasSearched(true); setIsLoading(true);
+    if (!forcedQuery && (isLoading || isFetchingBackground)) return;
+    
+    setActiveSearch(query); setHasSearched(true); setIsLoading(true); setIsFetchingBackground(false);
     setView("search"); setFilterSite("all"); setAllVacancies([]); setPendingVacancies([]); 
     setDisplayCount(20); setNextFetchPage(1); trackEvent("search_v1_1", { query });
 
@@ -360,12 +422,20 @@ function ApplicationContent() {
 
   const handleSaveFilters = () => {
     setIsSavingFilters(true);
+    
+    filterRefs.current = { city: draftCity, format: draftFormat, country: draftCountry };
+
     setTimeout(() => {
       setActiveCountry(draftCountry);
       setActiveCity(draftCity);
       setActiveFormat(draftFormat);
       setIsSavingFilters(false);
       setIsSavedSuccess(true);
+      
+      if (hasSearched && activeSearch) {
+        handleSearch(activeSearch);
+      }
+
       setTimeout(() => {
         setIsSavedSuccess(false);
         setIsFiltersOpen(false);
@@ -502,7 +572,7 @@ function ApplicationContent() {
                     </button>
                   ) : (
                     <button 
-                      onClick={handleSearch} 
+                      onClick={() => handleSearch()} 
                       disabled={!searchQuery.trim()} 
                       className="p-2.5 rounded-xl opacity-40 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-all outline-none disabled:opacity-20" 
                       style={{ color: 'var(--text-main)' }}
@@ -648,7 +718,7 @@ function ApplicationContent() {
             ) : isSavedSuccess ? (
               <>
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                Сохранено
+                Применено
               </>
             ) : (
               "Применить фильтры"
