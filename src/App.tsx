@@ -107,8 +107,10 @@ const LOCATIONS_EN: Record<string, string> = {
   "Вся Сербия": "All Serbia", "Все Нидерланды": "All Netherlands", "Вся Франция": "All France", "Вся Испания": "All Spain",
   "Москва": "Moscow", "Санкт-Петербург": "St. Petersburg", "Новосибирск": "Novosibirsk", "Екатеринбург": "Yekaterinburg",
   "Казань": "Kazan", "Нижний Новгород": "Nizhny Novgorod", "Челябинск": "Chelyabinsk", "Самара": "Samara",
-  "Уфа": "Ufa", "Ростов-на-Дону": "Rostov-on-Don", "Краснодар": "Krasnodar", "Минск": "Minsk",
-  "Гомель": "Gomel", "Витебск": "Vitebsk", "Могилев": "Mogilev", "Гродно": "Grodno", "Брест": "Brest",
+  "Уфа": "Ufa", "Ростов-на-Дону": "Rostov-on-Don", "Краснодар": "Krasnodar", "Воронеж": "Voronezh", "Пермь": "Perm",
+  "Волгоград": "Volgograd", "Красноярск": "Krasnoyarsk", "Омск": "Omsk", "Калининград": "Kaliningrad",
+  "Владивосток": "Vladivostok", "Томск": "Tomsk", "Тюмень": "Tyumen", "Саратов": "Saratov",
+  "Минск": "Minsk", "Гомель": "Gomel", "Витебск": "Vitebsk", "Могилев": "Mogilev", "Гродно": "Grodno", "Брест": "Brest",
   "Алматы": "Almaty", "Астана": "Astana", "Шымкент": "Shymkent", "Караганда": "Karaganda",
   "Ереван": "Yerevan", "Гюмри": "Gyumri", "Тбилиси": "Tbilisi", "Батуми": "Batumi", "Баку": "Baku",
   "Бишкек": "Bishkek", "Кишинев": "Chisinau", "Душанбе": "Dushanbe", "Ашхабад": "Ashgabat", "Ташкент": "Tashkent",
@@ -594,8 +596,6 @@ function ApplicationContent() {
         handleSearch(activeSearch);
       }
 
-      // Окно больше не закрывается автоматически! Пользователь закроет его крестиком.
-      // Сбрасываем только зеленую галочку на кнопке через 1.5 секунды
       setTimeout(() => {
         setIsSavedSuccess(false);
       }, 1500);

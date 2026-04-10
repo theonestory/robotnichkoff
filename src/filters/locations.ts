@@ -6,11 +6,11 @@ export const WORK_FORMATS = [
 
 export const COUNTRIES = [
   { id: "all", name: "Везде" },
+  { id: "russia", name: "Россия" },
   { id: "ru_cis", name: "Россия и СНГ" },
   { id: "cis", name: "СНГ" },
   { id: "europe_all", name: "Европа" },
   { id: "usa", name: "США" },
-  { id: "russia", name: "Россия" },
   { id: "belarus", name: "Беларусь" },
   { id: "kazakhstan", name: "Казахстан" },
   { id: "armenia", name: "Армения" },
@@ -74,6 +74,16 @@ export const CITIES: Record<string, { id: string; name: string; hh: string; habr
     { id: "ru_ufa", name: "Уфа", hh: "99", habr: "c_723", sj: "t_216" },
     { id: "ru_rostov", name: "Ростов-на-Дону", hh: "76", habr: "c_710", sj: "t_85" },
     { id: "ru_krasnodar", name: "Краснодар", hh: "53", habr: "c_698", sj: "t_130" },
+    { id: "ru_voronezh", name: "Воронеж", hh: "26", habr: "c_690", sj: "t_25" },
+    { id: "ru_perm", name: "Пермь", hh: "72", habr: "c_707", sj: "t_71" },
+    { id: "ru_volgograd", name: "Волгоград", hh: "24", habr: "c_688", sj: "t_23" },
+    { id: "ru_krasnoyarsk", name: "Красноярск", hh: "54", habr: "c_699", sj: "t_48" },
+    { id: "ru_omsk", name: "Омск", hh: "68", habr: "c_706", sj: "t_66" },
+    { id: "ru_kaliningrad", name: "Калининград", hh: "41", habr: "c_694", sj: "t_40" },
+    { id: "ru_vladivostok", name: "Владивосток", hh: "22", habr: "c_686", sj: "t_21" },
+    { id: "ru_tomsk", name: "Томск", hh: "90", habr: "c_717", sj: "t_88" },
+    { id: "ru_tyumen", name: "Тюмень", hh: "95", habr: "c_720", sj: "t_90" },
+    { id: "ru_saratov", name: "Саратов", hh: "79", habr: "c_713", sj: "t_82" }
   ],
   "belarus": [
     { id: "by_all", name: "Вся Беларусь", hh: "16", habr: "c_3", sj: "c_3" },
