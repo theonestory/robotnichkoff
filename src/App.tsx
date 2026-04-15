@@ -12,6 +12,10 @@ import hhLogo from "./assets/logos/hh.svg";
 import habrLogo from "./assets/logos/habr.svg";
 import sjLogo from "./assets/logos/superjob.svg";
 import zarplataLogo from "./assets/logos/zarplata.svg";
+import geekjobLogo from "./assets/logos/geekjob.svg"; 
+import trudvsemLogo from "./assets/logos/trudvsem.svg";
+import remotejobLogo from "./assets/logos/remote-job.svg";
+import rabotaruLogo from "./assets/logos/rabotaru.svg"; // Наш новый лого
 import notiSound from "./assets/noti-robo.wav";
 
 interface Vacancy {
@@ -23,7 +27,7 @@ const DICT = {
     app_name: "Robotничкофф",
     nav_search: "🔍 Поиск",
     nav_favs: "❤️ Избранное",
-    nav_history: "🕒 Вы смотрели",
+    nav_history: "🕒 История",
     theme_light: "☀️ Светлая",
     theme_dark: "🌙 Темная",
     contact_author: "Связаться с автором",
@@ -52,7 +56,8 @@ const DICT = {
     version: "Версия",
     push_title: "Срочно проверяй! 🚀",
     push_body: "Найдено {count} новых вакансий.",
-    select_placeholder: "Выберите..."
+    select_placeholder: "Выберите...",
+    resources_label: "Ресурсы"
   },
   en: {
     app_name: "Robotnichkoff",
@@ -71,10 +76,10 @@ const DICT = {
     empty_favs: "No favorites yet",
     empty_history: "History is empty",
     empty_search: "Nothing found",
-    no_title: "Без названия", // Возвращено на русский для аутентичности контента
-    no_company: "Компания не указана", // Возвращено на русский
-    salary_missing: "ЗП: не указано", // Возвращено на русский
-    salary_prefix: "ЗП: ", // Возвращено на русский
+    no_title: "Без названия",
+    no_company: "Компания не указана",
+    salary_missing: "ЗП: не указано",
+    salary_prefix: "ЗП: ",
     show_more: "Show more",
     settings_title: "Search Parameters",
     filter_country: "Country",
@@ -87,7 +92,8 @@ const DICT = {
     version: "Version",
     push_title: "Check it out! 🚀",
     push_body: "Found {count} new vacancies.",
-    select_placeholder: "Select..."
+    select_placeholder: "Select...",
+    resources_label: "Sources"
   }
 };
 
@@ -104,7 +110,7 @@ const LOCATIONS_EN: Record<string, string> = {
   "Все локации": "All locations", "Вся Россия и СНГ": "All Russia & CIS", "Все страны СНГ (без РФ)": "All CIS (except RU)",
   "Все страны Европы": "All Europe", "Все США": "All USA", "Все страны MENA": "All MENA", "Вся Азия": "All Asia",
   "Вся Россия": "All Russia", "Вся Беларусь": "All Belarus",
-  "Весь Казахстан": "All Kazakhstan", "Вся Армения": "All Armenia", "Вся Грузия": "All Georgia",
+  "Весь Казахстан": "All Казахстан", "Вся Армения": "All Armenia", "Вся Грузия": "All Georgia",
   "Весь Азербайджан": "All Azerbaijan", "Весь Кыргызстан": "All Kyrgyzstan", "Вся Молдова": "All Moldova",
   "Весь Таджикистан": "All Tajikistan", "Весь Туркменистан": "All Turkmenistan", "Весь Узбекистан": "All Uzbekistan",
   "Вся Германия": "All Germany", "Вся Великобритания": "All UK", "Вся Польша": "All Poland", "Весь Кипр": "All Cyprus",
@@ -129,8 +135,27 @@ const LOCATIONS_EN: Record<string, string> = {
 };
 
 const FILTER_SITES = [
-  { id: "all", label: "ВСЕ" }, { id: "hh", label: "HH.RU" }, { id: "habr", label: "HABR" }, { id: "superjob", label: "SUPERJOB" }, { id: "zarplata", label: "ZARPLATA" }
+  { id: "all", label: "ВСЕ" },
+  { id: "hh", label: "HH.RU" },
+  { id: "habr", label: "HABR" },
+  { id: "superjob", label: "SUPERJOB" },
+  { id: "zarplata", label: "ZARPLATA" },
+  { id: "geekjob", label: "GEEKJOB" },
+  { id: "trudvsem", label: "ТРУДВСЕМ" },
+  { id: "remotejob", label: "REMOTE-JOB" },
+  { id: "rabotaru", label: "RABOTA.RU" } // Добавили Rabota.ru
 ];
+
+const SITE_LOGOS: Record<string, string> = {
+  hh: hhLogo,
+  habr: habrLogo,
+  superjob: sjLogo,
+  zarplata: zarplataLogo,
+  geekjob: geekjobLogo,
+  trudvsem: trudvsemLogo,
+  remotejob: remotejobLogo,
+  rabotaru: rabotaruLogo // Связали логотип
+};
 
 const LANG_FILTERS = [
   { id: "ru", name: "Русский язык (Всё приложение)" },
@@ -178,11 +203,18 @@ const ServiceLogo = ({ link }: { link: string }) => {
   else if (url.includes("habr.com")) src = habrLogo;
   else if (url.includes("superjob.ru")) src = sjLogo;
   else if (url.includes("zarplata.ru")) src = zarplataLogo;
+  else if (url.includes("geekjob.ru")) src = geekjobLogo; 
+  else if (url.includes("trudvsem.ru")) src = trudvsemLogo;
+  else if (url.includes("remote-job.ru")) src = remotejobLogo;
+  else if (url.includes("rabota.ru")) src = rabotaruLogo; // Логика для карточек
 
-  if (src) return <img src={src} alt="Logo" className="service-logo-img" />;
+  if (src) {
+    return <img src={src} alt="Logo" className="w-full h-full block" />;
+  }
+  
   return (
-    <div className="service-logo-fallback">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 16h.01M16 16h.01"/></svg>
+    <div className="w-full h-full rounded-full flex items-center justify-center bg-black/10 dark:bg-white/10">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 opacity-40"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 16h.01M16 16h.01"/></svg>
     </div>
   );
 };
@@ -287,7 +319,7 @@ function ApplicationContent() {
   const [filterSite, setFilterSite] = useState("all");
   const [view, setView] = useState<"search" | "favorites" | "history">("search");
   
-  const [appVersion, setAppVersion] = useState("1.0.21");
+  const [appVersion, setAppVersion] = useState("1.0.22");
   const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string, notified: boolean}>({ show: false, version: "", notified: false });
 
   const [allVacancies, setAllVacancies] = useState<Vacancy[]>([]);
@@ -367,12 +399,21 @@ function ApplicationContent() {
     const formatObj = WORK_FORMATS.find(f => f.id === format) || WORK_FORMATS[0];
 
     let loc = cityObj.hh;
-    if (site === "habr") loc = cityObj.habr;
-    if (site === "superjob") loc = cityObj.sj;
-
     let fmt = formatObj.hh;
-    if (site === "habr") fmt = formatObj.habr;
-    if (site === "superjob") fmt = formatObj.sj;
+
+    if (site === "habr") {
+      loc = cityObj.habr || "";
+      fmt = formatObj.habr || "";
+    } else if (site === "superjob") {
+      loc = cityObj.sj || "";
+      fmt = formatObj.sj || "";
+    } else if (site === "zarplata") {
+      loc = cityObj.hh || ""; 
+      fmt = formatObj.hh || "";
+    } else if (site === "geekjob" || site === "trudvsem" || site === "remotejob" || site === "rabotaru") {
+      loc = ""; 
+      fmt = "";
+    }
 
     return { loc, fmt };
   };
@@ -428,7 +469,16 @@ function ApplicationContent() {
 
   useEffect(() => {
     if (filterSite === "all" || pendingVacancies.length === 0 || view !== "search") return;
-    const domains: Record<string, string> = { hh: "hh.ru", habr: "habr.com", superjob: "superjob.ru", zarplata: "zarplata.ru" };
+    const domains: Record<string, string> = { 
+      hh: "hh.ru", 
+      habr: "habr.com", 
+      superjob: "superjob.ru", 
+      zarplata: "zarplata.ru", 
+      geekjob: "geekjob.ru", 
+      trudvsem: "trudvsem.ru",
+      remotejob: "remote-job.ru",
+      rabotaru: "rabota.ru"
+    };
     const reqDomain = domains[filterSite];
 
     const matching = pendingVacancies.filter(v => v.link.toLowerCase().includes(reqDomain));
@@ -441,7 +491,7 @@ function ApplicationContent() {
   useEffect(() => {
     if (!activeSearch || view !== "search") return;
     const intervalId = setInterval(async () => {
-      const sites = ["hh", "habr", "superjob", "zarplata"];
+      const sites = FILTER_SITES.filter(s => s.id !== 'all').map(s => s.id);
       let foundNew = false;
       let newItems: Vacancy[] = [];
       const savedVisited: Vacancy[] = JSON.parse(localStorage.getItem("jobSonar_visited") || "[]");
@@ -509,7 +559,7 @@ function ApplicationContent() {
     setView("search"); setFilterSite("all"); setAllVacancies([]); setPendingVacancies([]); 
     setDisplayCount(20); setNextFetchPage(1); trackEvent("search_v1_1", { query });
 
-    const sites = ["hh", "habr", "superjob", "zarplata"];
+    const sites = FILTER_SITES.filter(s => s.id !== 'all').map(s => s.id);
     let initialAcc: Vacancy[] = [];
 
     for (const s of sites) {
@@ -531,7 +581,7 @@ function ApplicationContent() {
     setIsFetchingBackground(true);
     try {
       for (let p = startPage; p < startPage + count; p++) {
-        const sites = ["hh", "habr", "superjob", "zarplata"];
+        const sites = FILTER_SITES.filter(s => s.id !== 'all').map(s => s.id);
         let pageItems: Vacancy[] = [];
         for (const s of sites) {
             try {
@@ -585,11 +635,8 @@ function ApplicationContent() {
 
   const handleSaveFilters = () => {
     setIsSavingFilters(true);
-    
     const isApiFilterChanged = draftCountry !== activeCountry || draftCity !== activeCity || draftFormat !== activeFormat;
-    
     filterRefs.current = { city: draftCity, format: draftFormat, country: draftCountry };
-
     setTimeout(() => {
       setActiveCountry(draftCountry);
       setActiveCity(draftCity);
@@ -598,14 +645,8 @@ function ApplicationContent() {
       setActiveLang(draftLang);
       setIsSavingFilters(false);
       setIsSavedSuccess(true);
-      
-      if (isApiFilterChanged && hasSearched && activeSearch) {
-        handleSearch(activeSearch);
-      }
-
-      setTimeout(() => {
-        setIsSavedSuccess(false);
-      }, 1500);
+      if (isApiFilterChanged && hasSearched && activeSearch) { handleSearch(activeSearch); }
+      setTimeout(() => { setIsSavedSuccess(false); }, 1500);
     }, 600);
   };
 
@@ -616,35 +657,36 @@ function ApplicationContent() {
     return rawList.filter(v => {
       if (!v) return false;
       if (filterSite !== "all") {
-        const domains: Record<string, string> = { hh: "hh.ru", habr: "habr.com", superjob: "superjob.ru", zarplata: "zarplata.ru" };
+        const domains: Record<string, string> = { 
+          hh: "hh.ru", 
+          habr: "habr.com", 
+          superjob: "superjob.ru", 
+          zarplata: "zarplata.ru", 
+          geekjob: "geekjob.ru", 
+          trudvsem: "trudvsem.ru",
+          remotejob: "remote-job.ru",
+          rabotaru: "rabota.ru"
+        };
         if (domains[filterSite] && !v.link.toLowerCase().includes(domains[filterSite])) return false;
       }
-      if (view !== "search" && activeSearch) {
-        if (!isJobMatch(v.title, activeSearch, v.link)) return false;
-      }
-      
+      if (view !== "search" && activeSearch) { if (!isJobMatch(v.title, activeSearch, v.link)) return false; }
       const isSalaryMissing = (v?.salary || "").toLowerCase().includes("не указана") || (v?.salary || "") === "";
       if (activeSalary === "with_salary" && isSalaryMissing) return false;
       if (activeSalary === "without_salary" && !isSalaryMissing) return false;
-
       return true;
     });
   }, [allVacancies, favorites, visitedVacancies, filterSite, view, activeSearch, activeSalary]);
 
   const displayedList = filteredList.slice(0, displayCount);
-  const currentFilterIndex = FILTER_SITES.findIndex(s => s.id === filterSite);
 
   const hasDraftChanges = draftCountry !== activeCountry || draftCity !== activeCity || draftFormat !== activeFormat || draftSalary !== activeSalary || draftLang !== activeLang;
   const isFilterActiveGlobally = activeCountry !== "all" || activeCity !== "all_any" || activeFormat !== "any" || activeSalary !== "all";
-  
   const isSearchCompleted = hasSearched && !isLoading && !isFetchingBackground && activeSearch === searchQuery && searchQuery.trim() !== "";
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault(); 
-      if (searchQuery.trim() && !isLoading && !isFetchingBackground) {
-        handleSearch();
-      }
+      if (searchQuery.trim() && !isLoading && !isFetchingBackground) { handleSearch(); }
     }
   };
 
@@ -652,35 +694,33 @@ function ApplicationContent() {
     <div className="flex h-screen w-screen font-sans overflow-hidden transition-colors duration-300 relative">
       <audio ref={audioRef} src={notiSound} preload="auto" />
       
-      <aside className="w-64 border-r flex flex-col p-6 shrink-0 z-20 transition-all shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
-        <h1 className="text-2xl font-black italic tracking-tighter mb-10 px-2 transition-colors" style={{ color: theme === 'light' ? '#3F3F46' : '#FFFFFF' }}>{t.app_name}</h1>
+      <aside className="w-64 border-r flex flex-col p-4 shrink-0 z-20 transition-all shadow-sm" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
+        <h1 className="text-xl font-black italic tracking-tighter mb-8 px-2 transition-colors" style={{ color: theme === 'light' ? '#3F3F46' : '#FFFFFF' }}>{t.app_name}</h1>
         
-        <nav className="space-y-3 flex-1">
-          <button 
-            onClick={() => { setView("search"); setFilterSite("all"); }} 
-            className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold transition-all outline-none ${view === "search" ? 'bg-[#3F3F46] text-white shadow-lg' : 'text-[var(--text-dim)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10'}`}
-          >
-            {t.nav_search}
-          </button>
-          
-          <button 
-            onClick={() => { setView("favorites"); setFilterSite("all"); }} 
-            className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-between transition-all outline-none ${view === "favorites" ? 'bg-[#3F3F46] text-white shadow-lg' : 'text-[var(--text-dim)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10'}`}
-          >
-            <span>{t.nav_favs}</span>
-            {favorites.length > 0 && <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ml-2 transition-colors ${view === "favorites" ? "bg-white text-[#3F3F46]" : "bg-[var(--text-dim)] text-white"}`}>{favorites.length}</span>}
-          </button>
-          
-          <button 
-            onClick={() => { setView("history"); setFilterSite("all"); }} 
-            className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-between transition-all outline-none ${view === "history" ? 'bg-[#3F3F46] text-white shadow-lg' : 'text-[var(--text-dim)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10'}`}
-          >
-            <span>{t.nav_history}</span>
-            {visitedVacancies.length > 0 && <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ml-2 transition-colors ${view === "history" ? "bg-white text-[#3F3F46]" : "bg-[var(--text-dim)] text-white"}`}>{visitedVacancies.length}</span>}
-          </button>
+        <label className="px-4 mb-3 text-[10px] font-black uppercase tracking-[0.2em] opacity-40" style={{ color: 'var(--text-main)' }}>{t.resources_label}</label>
+        <nav className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-1">
+          {FILTER_SITES.map(s => (
+            <button 
+              key={s.id}
+              onClick={() => { setView("search"); setFilterSite(s.id); }} 
+              className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all outline-none flex items-center justify-between ${filterSite === s.id && view === "search" ? 'bg-[#3F3F46] text-white shadow-md' : 'text-[var(--text-dim)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10'}`}
+            >
+              <div className="flex items-center gap-3">
+                {s.id === "all" ? (
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center bg-black/10 dark:bg-white/10 text-current" style={{ transform: "translateZ(0)", backfaceVisibility: "hidden" }}>
+                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                  </div>
+                ) : (
+                  <img src={SITE_LOGOS[s.id]} alt={s.id} className="w-5 h-5 block" />
+                )}
+                <span>{s.id === "all" ? (activeLang === "ru" ? "ВСЕ" : "ALL") : s.label}</span>
+              </div>
+              {filterSite === s.id && view === "search" && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+            </button>
+          ))}
         </nav>
         
-        <div className="theme-toggle-container pt-4">
+        <div className="theme-toggle-container pt-4 mt-auto">
           <div className="theme-toggle-switch" data-theme={theme} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
             <div className="theme-toggle-pill" />
             <div className={`theme-label ${theme === 'light' ? 'active' : ''}`}>{t.theme_light}</div>
@@ -688,10 +728,7 @@ function ApplicationContent() {
           </div>
         </div>
 
-        <div 
-          onClick={() => invoke("open_browser", { url: "https://www.linkedin.com/in/andreevav/" })} 
-          className="author-credit"
-        >
+        <div onClick={() => invoke("open_browser", { url: "https://www.linkedin.com/in/andreevav/" })} className="author-credit mt-4">
           {t.contact_author}
         </div>
       </aside>
@@ -707,17 +744,10 @@ function ApplicationContent() {
           </div>
         )}
 
-        {updateInfo.show && (
-          <div className="bg-[#3F3F46] text-white px-10 py-3 flex justify-between items-center shadow-lg z-30">
-            <span className="text-sm font-black uppercase">{t.update_available} v{updateInfo.version}</span>
-            <button onClick={() => invoke("open_browser", { url: "https://github.com/theonestory/robotnichkoff/releases/latest" })} className="bg-white text-[#3F3F46] px-6 py-1.5 rounded-xl text-xs font-black shadow-md">{t.update_btn}</button>
-          </div>
-        )}
-        
         <header className="border-b px-10 py-6 z-10 shadow-sm shrink-0" style={{ backgroundColor: 'var(--bg-side)', borderColor: 'var(--border)' }}>
-          <div className="flex flex-col gap-4 max-w-4xl w-full">
+          <div className="flex flex-col gap-4 max-w-5xl w-full mx-auto">
+            
             <div className="flex items-center gap-3 w-full">
-              
               <div className="relative flex-1 flex items-center">
                 <input 
                   type="text" 
@@ -728,7 +758,6 @@ function ApplicationContent() {
                   style={{ backgroundColor: 'var(--input-bg)' }} 
                   placeholder={t.search_placeholder} 
                 />
-                
                 <div className="absolute right-2 flex items-center">
                   {isLoading || isFetchingBackground ? (
                     <div className="p-2.5 rounded-xl opacity-40" style={{ color: 'var(--text-main)' }}>
@@ -761,16 +790,22 @@ function ApplicationContent() {
                 style={{ color: 'var(--text-main)' }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                {isFilterActiveGlobally && (
-                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)] border-[1.5px] border-white dark:border-[#161618]"></span>
-                )}
+                {isFilterActiveGlobally && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)] border-[1.5px] border-white dark:border-[#161618]"></span>}
               </button>
             </div>
-            
-            <div className="ios-slider-container max-w-4xl mt-1">
-              <div className="ios-slider-pill" style={{ left: `calc(${currentFilterIndex} * 20% + 4px)`, width: 'calc(20% - 8px)' }} />
-              {FILTER_SITES.map(s => <div key={s.id} onClick={() => setFilterSite(s.id)} className="ios-slider-item" style={{ color: filterSite === s.id ? 'var(--text-main)' : 'var(--text-dim)' }}>{s.id === "all" ? (activeLang === "ru" ? "ВСЕ" : "ALL") : s.label}</div>)}
-            </div>
+
+            <nav className="flex p-1 rounded-2xl w-full shrink-0" style={{ backgroundColor: 'var(--toggle-bg)' }}>
+               <button onClick={() => setView("search")} className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${view === 'search' ? 'bg-[#3F3F46] text-white shadow-md' : 'text-[var(--text-dim)] hover:text-[var(--text-main)]'}`}>
+                 🔍 {activeLang === 'ru' ? 'Поиск' : 'Search'}
+               </button>
+               <button onClick={() => setView("favorites")} className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${view === 'favorites' ? 'bg-[#3F3F46] text-white shadow-md' : 'text-[var(--text-dim)] hover:text-[var(--text-main)]'}`}>
+                 ❤️ {activeLang === 'ru' ? 'Избранное' : 'Favs'} {favorites.length > 0 && <span className="opacity-40">{favorites.length}</span>}
+               </button>
+               <button onClick={() => setView("history")} className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${view === 'history' ? 'bg-[#3F3F46] text-white shadow-md' : 'text-[var(--text-dim)] hover:text-[var(--text-main)]'}`}>
+                 🕒 {activeLang === 'ru' ? 'История' : 'History'}
+               </button>
+            </nav>
+
           </div>
         </header>
 
@@ -825,7 +860,6 @@ function ApplicationContent() {
                   </div>
                 );
               })}
-
               {filteredList.length > displayCount && !isLoading && (
                   <div className="flex justify-center mt-8 pb-12">
                       <button onClick={handleShowMore} className="text-[10px] font-black uppercase tracking-[0.2em] transition-all opacity-60 hover:opacity-100 active:scale-95 outline-none" style={{ color: 'var(--text-dim)' }}>{t.show_more}</button>
@@ -843,76 +877,20 @@ function ApplicationContent() {
 
         <div className="flex flex-col items-center w-full max-w-sm gap-8 px-6">
           <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-main)' }}>{t.settings_title}</h2>
-          
           <div className="w-full flex flex-col gap-5">
-            <CustomSelect 
-              label={t.filter_country} 
-              options={localizedCountries} 
-              selectedId={draftCountry} 
-              onSelect={(id) => { 
-                setDraftCountry(id); 
-                setDraftCity(CITIES[id]?.[0]?.id || "all_any"); 
-              }} 
-              placeholder={t.select_placeholder}
-            />
-            
-            <CustomSelect 
-              label={t.filter_city} 
-              options={localizedCities} 
-              selectedId={draftCity} 
-              onSelect={setDraftCity} 
-              placeholder={t.select_placeholder}
-            />
-
-            <CustomSelect 
-              label={t.filter_format} 
-              options={localizedWorkFormats} 
-              selectedId={draftFormat} 
-              onSelect={setDraftFormat} 
-              placeholder={t.select_placeholder}
-            />
-
-            <CustomSelect 
-              label={t.filter_salary} 
-              options={getSalaryFilters(activeLang)} 
-              selectedId={draftSalary} 
-              onSelect={setDraftSalary} 
-              placeholder={t.select_placeholder}
-            />
-
-            <CustomSelect 
-              label={t.filter_lang} 
-              options={LANG_FILTERS} 
-              selectedId={draftLang} 
-              onSelect={(id) => setDraftLang(id as "ru" | "en")} 
-              placeholder={t.select_placeholder}
-            />
+            <CustomSelect label={t.filter_country} options={localizedCountries} selectedId={draftCountry} onSelect={(id) => { setDraftCountry(id); setDraftCity(CITIES[id]?.[0]?.id || "all_any"); }} placeholder={t.select_placeholder} />
+            <CustomSelect label={t.filter_city} options={localizedCities} selectedId={draftCity} onSelect={setDraftCity} placeholder={t.select_placeholder} />
+            <CustomSelect label={t.filter_format} options={localizedWorkFormats} selectedId={draftFormat} onSelect={setDraftFormat} placeholder={t.select_placeholder} />
+            <CustomSelect label={t.filter_salary} options={getSalaryFilters(activeLang)} selectedId={draftSalary} onSelect={setDraftSalary} placeholder={t.select_placeholder} />
+            <CustomSelect label={t.filter_lang} options={LANG_FILTERS} selectedId={draftLang} onSelect={(id) => setDraftLang(id as "ru" | "en")} placeholder={t.select_placeholder} />
           </div>
-
           <button 
             onClick={handleSaveFilters}
             disabled={!hasDraftChanges || isSavingFilters || isSavedSuccess}
-            className={`mt-4 w-full py-4 rounded-2xl text-sm font-black tracking-wide uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
-              hasDraftChanges || isSavedSuccess
-                ? "shadow-xl active:scale-95 opacity-100 cursor-pointer"
-                : "opacity-40 cursor-not-allowed"
-            }`}
-            style={{ 
-              backgroundColor: isSavedSuccess ? '#10B981' : 'var(--text-main)', 
-              color: 'var(--bg-app)',
-              transform: isSavedSuccess ? 'scale(1.02)' : 'scale(1)'
-            }}
+            className={`mt-4 w-full py-4 rounded-2xl text-sm font-black tracking-wide uppercase transition-all duration-300 flex items-center justify-center gap-2 ${hasDraftChanges || isSavedSuccess ? "shadow-xl active:scale-95 opacity-100 cursor-pointer" : "opacity-40 cursor-not-allowed"}`}
+            style={{ backgroundColor: isSavedSuccess ? '#10B981' : 'var(--text-main)', color: 'var(--bg-app)', transform: isSavedSuccess ? 'scale(1.02)' : 'scale(1)' }}
           >
-            {isSavingFilters ? (
-              <span className="relative flex h-5 w-5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-50"></span><span className="relative inline-flex rounded-full h-5 w-5 bg-white"></span></span>
-            ) : isSavedSuccess ? (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                {t.btn_applied}
-              </>
-            ) : (
-              t.btn_apply
-            )}
+            {isSavingFilters ? <span className="relative flex h-5 w-5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-50"></span><span className="relative inline-flex rounded-full h-5 w-5 bg-white"></span></span> : isSavedSuccess ? <><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>{t.btn_applied}</> : t.btn_apply}
           </button>
         </div>
 

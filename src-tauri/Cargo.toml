@@ -1,6 +1,6 @@
 [package]
 name = "robotnichkoff"
-version = "1.0.21"
+version = "1.1.0"
 description = "Help to search job"
 authors = ["you"]
 edition = "2021"
@@ -26,4 +26,7 @@ reqwest = { version = "0.12", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 scraper = "0.19"
 tauri-plugin-notification = "2.3.3"
+lazy_static = "1.5.0"
+webbrowser = "1.2.0"
+dirs = "6.0.0"
 

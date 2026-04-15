@@ -35,7 +35,6 @@
   --toggle-text-active: #ECECED;
 }
 
-/* 1. ГЛОБАЛЬНЫЙ КИЛЛЕР РАССИНХРОНА */
 html, body, #root, aside, header, main, nav, section, input, button, div, span, p, h1, h2, h3, svg, path {
   transition-property: background-color, border-color, color, fill, stroke !important;
   transition-duration: 1.6s !important; 
@@ -47,15 +46,12 @@ html, body, #root {
   background-color: var(--bg-app); color: var(--text-main);
 }
 
-/* 2. АНТИ-ВЯЗКОСТЬ (Быстрый отклик интерактива) */
-/* Возвращаем 0.2с для кнопок навигации, шапки и плавающих кнопок, чтобы они мгновенно реагировали на клик */
 nav button, nav button *,
 header button, header button *,
 .sticky button, .sticky button * {
   transition-duration: 0.2s !important;
 }
 
-/* 3. ВОССТАНОВЛЕНИЕ HOVER-АНИМАЦИЙ КОМПОНЕНТОВ */
 .ios-slider-container { 
   @apply relative flex p-1 rounded-xl overflow-hidden w-full h-10 items-center shrink-0; 
   background-color: var(--input-bg); 
@@ -105,12 +101,11 @@ header button, header button *,
 
 .service-logo-container { 
   width: 52px; height: 52px; 
-  @apply rounded-full shrink-0 mr-6 overflow-hidden flex items-center justify-center; 
-  background-color: var(--input-bg);
-  transition-property: background-color, border-color, color, fill, stroke, filter, opacity !important;
-  transition-duration: 1.6s, 1.6s, 1.6s, 1.6s, 1.6s, 0.3s, 0.3s !important;
+  @apply shrink-0 mr-6 flex items-center justify-center; 
+  transition-property: filter, opacity !important;
+  transition-duration: 0.3s, 0.3s !important;
 }
-.service-logo-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.service-logo-container img { width: 100%; height: 100%; object-fit: cover; display: block; transition: all 0.3s ease; }
 
 .text-stack {
   transition-property: background-color, border-color, color, fill, stroke, opacity !important;
@@ -131,7 +126,7 @@ header button, header button *,
 }
 .icon-fav-active { color: #EF4444; }
 
-/* 4. ПРОСМОТРЕННЫЕ КАРТОЧКИ: разделяем эффекты текста и логотипа */
+/* ВОССТАНОВЛЕННАЯ ПРОЗРАЧНОСТЬ ПОСЕЩЕННЫХ КАРТОЧЕК */
 .visited-card .service-logo-container { opacity: 0.3 !important; filter: grayscale(1) !important; }
 .visited-card .text-stack { opacity: 0.6 !important; }
 
@@ -146,3 +141,11 @@ header button, header button *,
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.2); border-radius: 10px; }
+
+aside h1 {
+  background: linear-gradient(135deg, var(--text-main) 0%, var(--text-dim) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

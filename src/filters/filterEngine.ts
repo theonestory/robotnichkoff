@@ -3,8 +3,8 @@ import { hhFilters } from './hh';
 import { habrFilters } from './habr';
 import { sjFilters } from './sj';
 import { zarplataFilters } from './zarplata';
+import { geekjobFilters } from './geekjob'; // Добавили импорт
 
-// Явно описываем структуру наших конфигураций, чтобы TypeScript понимал типы
 interface SiteConfig {
   dict?: Record<string, string[]>;
   blacklist?: string[];
@@ -17,25 +17,21 @@ export const isJobMatch = (title: string, query: string, link: string): boolean 
   const q = query.toLowerCase().trim();
   const url = link.toLowerCase();
 
-  // 1. Подбираем конфиг по домену и явно указываем тип SiteConfig
   let siteConfig: SiteConfig = hhFilters as SiteConfig; 
   if (url.includes('habr.com')) siteConfig = habrFilters as SiteConfig;
   else if (url.includes('superjob.ru')) siteConfig = sjFilters as SiteConfig;
   else if (url.includes('zarplata.ru')) siteConfig = zarplataFilters as SiteConfig;
+  else if (url.includes('geekjob.ru')) siteConfig = geekjobFilters as SiteConfig; // Добавили проверку GeekJob
 
-  // Извлекаем данные с защитой от undefined, чтобы избежать типа "never"
   const blacklist: string[] = siteConfig.blacklist || [];
   const siteDict: Record<string, string[]> = siteConfig.dict || {};
 
-  // 2. Проверка на блэклист
   if (blacklist.some(word => t.includes(word.toLowerCase()))) {
     return false;
   }
 
-  // 3. Склейка общей базы и словаря конкретного сайта
   const combinedDict: Record<string, string[]> = { ...COMMON_DICT, ...siteDict };
 
-  // 4. Логика поиска по синонимам
   let matchedAliases: string[] = [q];
   for (const [key, values] of Object.entries(combinedDict)) {
     if (q.includes(key) || key.includes(q)) {
