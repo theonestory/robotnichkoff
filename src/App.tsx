@@ -320,7 +320,7 @@ function ApplicationContent() {
   const [view, setView] = useState<"search" | "favorites" | "history">("search");
   
   const [appVersion, setAppVersion] = useState("1.0.22");
-  const [updateInfo, setUpdateInfo] = useState<{show: boolean, version: string, notified: boolean}>({ show: false, version: "", notified: false });
+  const [, setUpdateInfo] = useState<{show: boolean, version: string, notified: boolean}>({ show: false, version: "", notified: false });
 
   const [allVacancies, setAllVacancies] = useState<Vacancy[]>([]);
   const [pendingVacancies, setPendingVacancies] = useState<Vacancy[]>([]); 
