@@ -33,8 +33,11 @@
    ```bash
    xattr -cr /Applications/Robotnichkoff.app
 
-ФОТО (v 1.0.X)
+## ФОТО (v 1.0.X)
 <img width="1904" height="877" alt="Group 608" src="https://github.com/user-attachments/assets/fe85e166-e256-4c94-90d4-9e1454a5a65e" />
+
+## ФОТО (v 1.1.X)
+<img width="1921" height="885" alt="Group 617" src="https://github.com/user-attachments/assets/6aa8f82c-bef6-419c-ba5f-2863de779386" />
 
 ---
 
