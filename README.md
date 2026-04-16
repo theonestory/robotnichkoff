@@ -23,7 +23,7 @@
 
 ## Установка и запуск
 ### Windows
-1. Скачайте файл `.msi` или `.exe` в разделе [Releases](https://github.com/theonestory/robotnichkoff/releases/latest).
+1. Скачайте файл `.msi` или `.exe` или `.dmg` в разделе [Releases](https://github.com/theonestory/robotnichkoff/releases/latest).
 2. Установите и запустите.
 
 ### macOS (Apple Silicon / Intel)
