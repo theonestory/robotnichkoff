@@ -34,7 +34,6 @@
    xattr -cr /Applications/Robotnichkoff.app
 
 ФОТО (v 1.0.X)
-<img width="1878" height="864" alt="Group 609" src="https://github.com/user-attachments/assets/9712c1ea-67a2-4b71-bdba-3610dc8687c9" />
 <img width="1904" height="877" alt="Group 608" src="https://github.com/user-attachments/assets/fe85e166-e256-4c94-90d4-9e1454a5a65e" />
 
 ---
