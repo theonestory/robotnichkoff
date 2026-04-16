@@ -90,22 +90,48 @@ header button, header button *,
 }
 .theme-label.active { color: var(--toggle-text-active); }
 
+/* === КАРТОЧКИ С ФИКСОМ РЯБИ === */
 .vacancy-card {
   background-color: var(--bg-card);
   @apply p-6 rounded-[2rem] flex items-center justify-between border border-transparent;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+  
+  /* Жесткое аппаратное ускорение против ряби шрифтов */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, box-shadow;
+  
   transition-property: background-color, border-color, color, fill, stroke, transform, box-shadow !important;
   transition-duration: 1.6s, 1.6s, 1.6s, 1.6s, 1.6s, 0.2s, 0.2s !important;
 }
-.vacancy-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05); }
+.vacancy-card:hover { 
+  transform: translateY(-4px) translateZ(0); 
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05); 
+}
 
+/* === ЖЕСТКАЯ БЛОКИРОВКА РАЗМЕРОВ ЛОГОТИПА === */
 .service-logo-container { 
-  width: 52px; height: 52px; 
+  width: 52px !important; 
+  height: 52px !important; 
+  min-width: 52px !important; 
+  min-height: 52px !important; 
+  max-width: 52px !important;
+  max-height: 52px !important;
   @apply shrink-0 mr-6 flex items-center justify-center; 
   transition-property: filter, opacity !important;
   transition-duration: 0.3s, 0.3s !important;
 }
-.service-logo-container img { width: 100%; height: 100%; object-fit: cover; display: block; transition: all 0.3s ease; }
+.service-logo-container img, 
+.service-logo-container > div { 
+  width: 52px !important; 
+  height: 52px !important; 
+  min-width: 52px !important; 
+  min-height: 52px !important; 
+  max-width: 52px !important; 
+  max-height: 52px !important; 
+  object-fit: cover; 
+  display: block; 
+}
 
 .text-stack {
   transition-property: background-color, border-color, color, fill, stroke, opacity !important;

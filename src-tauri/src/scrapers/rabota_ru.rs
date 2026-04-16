@@ -3,30 +3,32 @@ use reqwest::Client;
 use scraper::{Html, Selector};
 
 pub async fn scrape(
-    client: &Client,
-    query: &str,
-    page: u32,
-    _location: &str,
-    _work_format: &str,
+    client: &Client, query: &str, page: u32, _location: &str, _work_format: &str,
 ) -> Result<Vec<Vacancy>, String> {
     let mut results = Vec::new();
     let ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
     
     let safe_query = query.replace(" ", "%20");
-    // У Rabota.ru страницы начинаются с 1
     let url = format!("https://www.rabota.ru/vacancy/?query={}&page={}", safe_query, page + 1);
     
-    let response = client.get(&url).header("User-Agent", ua).send().await.map_err(|e| e.to_string())?;
+    let response = client.get(&url)
+        .header("User-Agent", ua)
+        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+        .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
+        .send().await.map_err(|e| e.to_string())?;
+        
     let html_content = response.text().await.map_err(|e| e.to_string())?;
     let document = Html::parse_document(&html_content);
     
-    // Бьюти-фильтр для зарплат (убираем "руб.", чистим пробелы)
+    // ИСПРАВЛЕННЫЙ ФИЛЬТР ТИРЕ
     let format_salary_string = |s: &str| -> String {
         let mut text = s.replace("руб.", "₽")
                         .replace("руб", "₽")
-                        .replace(" — ", " до ")
-                        .replace(" - ", " до ")
-                        .replace(" ", " "); 
+                        .replace("—", " до ")
+                        .replace("–", " до ")
+                        .replace("-", " до ")
+                        .replace(" ", " ")
+                        .replace(" ", " "); 
                         
         while text.contains("  ") { text = text.replace("  ", " "); }
         
@@ -37,7 +39,7 @@ pub async fn scrape(
         text.trim().to_string()
     };
 
-    let card_selectors = vec![".vacancy-preview-card", "article.vacancy", ".vacancy-card", ".r-card"];
+    let card_selectors = vec!["article.vacancy", ".vacancy-preview-card", ".vacancy-card", ".r-card"];
     let mut parsed_any = false;
 
     for selector_str in card_selectors {
@@ -52,15 +54,13 @@ pub async fn scrape(
                     let link = if raw_link.starts_with('/') { format!("https://www.rabota.ru{}", raw_link) } else { raw_link.to_string() };
                     
                     let company_sel = Selector::parse(".vacancy-preview-card__company-name a, .company-name").unwrap();
-                    let company = element.select(&company_sel)
-                        .next()
+                    let company = element.select(&company_sel).next()
                         .map(|c| c.text().collect::<Vec<_>>().join(" ").trim().to_string())
                         .unwrap_or_else(|| "Компания не указана".to_string());
                         
                     let salary_sel = Selector::parse(".vacancy-preview-card__salary, .vacancy-salary").unwrap();
-                    let mut salary = element.select(&salary_sel)
-                        .next()
-                        .map(|s| s.text().collect::<Vec<_>>().join(" ").trim().replace(" ", " ").to_string())
+                    let mut salary = element.select(&salary_sel).next()
+                        .map(|s| s.text().collect::<Vec<_>>().join(" ").trim().to_string())
                         .unwrap_or_else(|| "".to_string());
                     
                     if salary.to_lowercase().contains("договоренности") || salary.to_lowercase().contains("не указана") {
@@ -75,20 +75,6 @@ pub async fn scrape(
             }
         }
         if parsed_any { break; }
-    }
-
-    // НАША ШПИОНСКАЯ ЛОВУШКА
-    if !parsed_any && html_content.len() > 1000 {
-        let search_word = "vacancy";
-        let start_idx = html_content.to_lowercase().find(search_word).unwrap_or(0);
-        let snippet: String = html_content.chars().skip(start_idx).take(200).collect();
-        
-        results.push(Vacancy {
-            title: format!("{} [Отладка Rabota.ru]", query),
-            link: url.clone(),
-            company: format!("HTML скачан: {} байт", html_content.len()),
-            salary: format!("Код: {}", snippet.replace("<", "[").replace(">", "]")),
-        });
     }
 
     Ok(results)

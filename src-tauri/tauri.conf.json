@@ -1,6 +1,6 @@
 {
   "productName": "Robotnichkoff", 
-  "version": "1.1.0",
+  "version": "1.1.1",
   "identifier": "com.robotnichkoff.search",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -10,17 +10,18 @@
   },
   "app": {
     "windows": [
-  {
-    "title": "Robotничкофф",
-    "width": 900,
-    "height": 800,
-    "minWidth": 860,
-    "maxWidth": 1200,
-    "minHeight": 650,
-    "resizable": true,
-    "fullscreen": false
-  }
-],
+        {
+          "title": "Robotничкофф",
+          "width": 900,
+          "height": 800,
+          "minWidth": 860,
+          "maxWidth": 1200,
+          "minHeight": 650,
+          "resizable": true,
+          "maximizable": false,
+          "fullscreen": false
+        }
+      ],
     "security": {
       "csp": null
     }

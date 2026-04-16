@@ -8,6 +8,13 @@ use tokio::sync::Mutex;
 use std::fs;
 use std::path::PathBuf;
 
+// --- ИМПОРТЫ ДЛЯ ТРЕЯ И УПРАВЛЕНИЯ ОКНОМ ---
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Manager, WindowEvent,
+};
+
 lazy_static::lazy_static! {
     static ref HTTP_CLIENT: Arc<Mutex<Client>> = Arc::new(Mutex::new(Client::new()));
 }
@@ -22,7 +29,6 @@ async fn search_jobs(
 ) -> Result<Vec<Vacancy>, String> {
     let client = HTTP_CLIENT.lock().await.clone();
 
-    // Элегантный роутинг: отправляем запрос в нужный модуль
     match site.as_str() {
         "hh" => scrapers::hh::scrape(&client, &query, page, &location, &work_format).await,
         "zarplata" => scrapers::zarplata::scrape(&client, &query, page, &location, &work_format).await,
@@ -31,7 +37,7 @@ async fn search_jobs(
         "geekjob" => scrapers::geekjob::scrape(&client, &query, page, &location, &work_format).await,
         "trudvsem" => scrapers::trudvsem::scrape(&client, &query, page, &location, &work_format).await,
         "remotejob" => scrapers::remote_job::scrape(&client, &query, page, &location, &work_format).await,
-        "rabotaru" => scrapers::rabota_ru::scrape(&client, &query, page, &location, &work_format).await, // <--- Наш финальный аккорд: Rabota.ru
+        "rabotaru" => scrapers::rabota_ru::scrape(&client, &query, page, &location, &work_format).await,
         _ => Err(format!("Неизвестный источник: {}", site)),
     }
 }
@@ -73,6 +79,60 @@ fn update_badge(_app_handle: tauri::AppHandle, _count: usize) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        // --- 1. НАСТРАИВАЕМ СИСТЕМНЫЙ ТРЕЙ ---
+        .setup(|app| {
+            let quit_i = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Развернуть", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
+
+            let mut tray_builder = TrayIconBuilder::new()
+                .menu(&menu)
+                .show_menu_on_left_click(false);
+            
+            // Безопасно подтягиваем иконку приложения
+            if let Some(icon) = app.default_window_icon() {
+                tray_builder = tray_builder.icon(icon.clone());
+            }
+
+            let _tray = tray_builder
+                // Обработка клика правой кнопкой мыши (контекстное меню)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "quit" => std::process::exit(0),
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    _ => {}
+                })
+                // Обработка левого клика по иконке
+                .on_tray_icon_event(|tray, event| match event {
+                    TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } => {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    _ => {}
+                })
+                .build(app)?;
+
+            Ok(())
+        })
+        // --- 2. ПЕРЕХВАТЫВАЕМ НАЖАТИЕ НА КРЕСТИК ---
+        .on_window_event(|window, event| match event {
+            WindowEvent::CloseRequested { api, .. } => {
+                let _ = window.hide(); // Прячем окно
+                api.prevent_close();   // Отменяем фактическое закрытие процесса
+            }
+            _ => {}
+        })
         .invoke_handler(tauri::generate_handler![
             search_jobs,
             open_browser,
